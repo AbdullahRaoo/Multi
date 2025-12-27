@@ -5,9 +5,10 @@ import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, Sid
 import { dashboard } from '@/routes';
 import operatorRoutes from '@/routes/operators';
 import brandRoutes from '@/routes/brands';
+import purchaseOrderRoutes from '@/routes/purchase-orders';
 import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/react';
-import { BookOpen, Folder, LayoutGrid, Users, Tag } from 'lucide-react';
+import { BookOpen, Folder, LayoutGrid, Users, Tag, ShoppingCart } from 'lucide-react';
 import AppLogo from './app-logo';
 
 const mainNavItems: NavItem[] = [
@@ -25,6 +26,11 @@ const mainNavItems: NavItem[] = [
         title: 'Brands',
         href: brandRoutes.index(),
         icon: Tag,
+    },
+    {
+        title: 'Purchase Orders',
+        href: purchaseOrderRoutes.index(),
+        icon: ShoppingCart,
     },
 ];
 

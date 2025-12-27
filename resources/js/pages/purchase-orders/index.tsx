@@ -10,17 +10,24 @@ import {
 import { Input } from '@/components/ui/input';
 import { DeleteConfirmationDialog } from '@/components/delete-confirmation-dialog';
 import AppLayout from '@/layouts/app-layout';
-import brandRoutes from '@/routes/brands';
+import purchaseOrderRoutes from '@/routes/purchase-orders';
 import { type BreadcrumbItem } from '@/types';
+import { type PaginatedData } from '@/types';
 import { Head, Link, router } from '@inertiajs/react';
 import { Plus, Eye, Pencil, Trash2, Search } from 'lucide-react';
-import { type PaginatedData } from '@/types';
 import { useState, useEffect, useCallback } from 'react';
 
 interface Brand {
     id: number;
     name: string;
-    description: string | null;
+}
+
+interface PurchaseOrder {
+    id: number;
+    po_number: string;
+    date: string;
+    country: string;
+    brand: Brand;
     created_at: string;
     updated_at: string;
 }
@@ -30,29 +37,30 @@ interface Filters {
 }
 
 interface Props {
-    brands: PaginatedData<Brand>;
+    purchaseOrders: PaginatedData<PurchaseOrder>;
     filters: Filters;
 }
 
-export default function Index({ brands, filters }: Props) {
-    const breadcrumbs: BreadcrumbItem[] = [
-        {
-            title: 'Brands',
-            href: brandRoutes.index().url,
-        },
-    ];
+export default function Index({ purchaseOrders, filters }: Props) {
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-    const [brandToDelete, setBrandToDelete] = useState<{ id: number; name: string } | null>(null);
+    const [purchaseOrderToDelete, setPurchaseOrderToDelete] = useState<{ id: number; po_number: string } | null>(null);
     const [search, setSearch] = useState(filters.search || '');
 
-    const handleDeleteClick = (brand: Brand) => {
-        setBrandToDelete({ id: brand.id, name: brand.name });
+    const breadcrumbs: BreadcrumbItem[] = [
+        {
+            title: 'Purchase Orders',
+            href: purchaseOrderRoutes.index().url,
+        },
+    ];
+
+    const handleDeleteClick = (purchaseOrder: PurchaseOrder) => {
+        setPurchaseOrderToDelete({ id: purchaseOrder.id, po_number: purchaseOrder.po_number });
         setDeleteDialogOpen(true);
     };
 
     const handleDeleteConfirm = () => {
-        if (brandToDelete) {
-            router.delete(brandRoutes.destroy(brandToDelete.id).url);
+        if (purchaseOrderToDelete) {
+            router.delete(purchaseOrderRoutes.destroy({ purchase_order: purchaseOrderToDelete.id }).url);
         }
     };
 
@@ -61,7 +69,7 @@ export default function Index({ brands, filters }: Props) {
         
         if (search) params.set('search', search);
 
-        router.get(brandRoutes.index().url + (params.toString() ? '?' + params.toString() : ''), {}, {
+        router.get(purchaseOrderRoutes.index().url + (params.toString() ? '?' + params.toString() : ''), {}, {
             preserveState: true,
             preserveScroll: true,
             replace: true,
@@ -79,20 +87,20 @@ export default function Index({ brands, filters }: Props) {
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Brands" />
+            <Head title="Purchase Orders" />
 
             <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
                 <div className="flex items-center justify-between">
                     <div>
-                        <h1 className="text-2xl font-semibold">Brands</h1>
+                        <h1 className="text-2xl font-semibold">Purchase Orders</h1>
                         <p className="text-sm text-neutral-600 dark:text-neutral-400">
-                            Manage your brands
+                            Manage all purchase orders
                         </p>
                     </div>
-                    <Link href={brandRoutes.create().url}>
+                    <Link href={purchaseOrderRoutes.create().url}>
                         <Button>
                             <Plus className="mr-2 h-4 w-4" />
-                            Add Brand
+                            Add Purchase Order
                         </Button>
                     </Link>
                 </div>
@@ -102,7 +110,7 @@ export default function Index({ brands, filters }: Props) {
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-neutral-500" />
                         <Input
                             type="text"
-                            placeholder="Search by name or description..."
+                            placeholder="Search by PO number, brand, or country..."
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                             className="pl-9"
@@ -114,52 +122,54 @@ export default function Index({ brands, filters }: Props) {
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead>Name</TableHead>
-                                <TableHead>Description</TableHead>
+                                <TableHead>PO Number</TableHead>
+                                <TableHead>Date</TableHead>
+                                <TableHead>Brand</TableHead>
+                                <TableHead>Country</TableHead>
                                 <TableHead>Created At</TableHead>
                                 <TableHead>Updated At</TableHead>
                                 <TableHead className="text-right">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {brands.data.length === 0 ? (
+                            {purchaseOrders.data.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={5} className="text-center text-neutral-500">
-                                        No brands found. Create your first one!
+                                    <TableCell colSpan={7} className="text-center text-neutral-500">
+                                        No purchase orders found. Create your first one!
                                     </TableCell>
                                 </TableRow>
                             ) : (
-                                brands.data.map((brand) => (
+                                purchaseOrders.data.map((po) => (
                                     <TableRow 
-                                        key={brand.id}
+                                        key={po.id}
                                         className="cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
-                                        onClick={() => router.visit(brandRoutes.show(brand.id).url)}
+                                        onClick={() => router.visit(purchaseOrderRoutes.show({ purchase_order: po.id }).url)}
                                     >
-                                        <TableCell className="font-medium">{brand.name}</TableCell>
-                                        <TableCell>
-                                            {brand.description ? (
-                                                <span className="line-clamp-2">{brand.description}</span>
-                                            ) : (
-                                                <span className="text-neutral-400">No description</span>
-                                            )}
+                                        <TableCell className="font-medium">
+                                            {po.po_number}
                                         </TableCell>
                                         <TableCell>
-                                            {new Date(brand.created_at).toLocaleDateString()}
+                                            {new Date(po.date).toLocaleDateString()}
+                                        </TableCell>
+                                        <TableCell>{po.brand?.name || 'N/A'}</TableCell>
+                                        <TableCell>{po.country}</TableCell>
+                                        <TableCell>
+                                            {new Date(po.created_at).toLocaleDateString()}
                                         </TableCell>
                                         <TableCell>
-                                            {new Date(brand.updated_at).toLocaleDateString()}
+                                            {new Date(po.updated_at).toLocaleDateString()}
                                         </TableCell>
                                         <TableCell className="text-right">
                                             <div 
                                                 className="flex items-center justify-end gap-2"
                                                 onClick={(e) => e.stopPropagation()}
                                             >
-                                                <Link href={brandRoutes.show(brand.id).url}>
+                                                <Link href={purchaseOrderRoutes.show({ purchase_order: po.id }).url}>
                                                     <Button variant="outline" size="sm">
                                                         <Eye className="h-4 w-4" />
                                                     </Button>
                                                 </Link>
-                                                <Link href={brandRoutes.edit(brand.id).url}>
+                                                <Link href={purchaseOrderRoutes.edit({ purchase_order: po.id }).url}>
                                                     <Button variant="outline" size="sm">
                                                         <Pencil className="h-4 w-4" />
                                                     </Button>
@@ -169,7 +179,7 @@ export default function Index({ brands, filters }: Props) {
                                                     size="sm"
                                                     onClick={(e) => {
                                                         e.stopPropagation();
-                                                        handleDeleteClick(brand);
+                                                        handleDeleteClick(po);
                                                     }}
                                                 >
                                                     <Trash2 className="h-4 w-4 text-red-500" />
@@ -183,13 +193,13 @@ export default function Index({ brands, filters }: Props) {
                     </Table>
                 </div>
 
-                {brands.links && brands.links.length > 3 && (
+                {purchaseOrders.links && purchaseOrders.links.length > 3 && (
                     <div className="flex items-center justify-between">
                         <div className="text-sm text-neutral-600 dark:text-neutral-400">
-                            Showing {brands.from} to {brands.to} of {brands.total} results
+                            Showing {purchaseOrders.from} to {purchaseOrders.to} of {purchaseOrders.total} results
                         </div>
                         <div className="flex gap-2">
-                            {brands.links.map((link, index) => (
+                            {purchaseOrders.links.map((link, index) => (
                                 <Link
                                     key={index}
                                     href={link.url || '#'}
@@ -209,8 +219,8 @@ export default function Index({ brands, filters }: Props) {
                     open={deleteDialogOpen}
                     onOpenChange={setDeleteDialogOpen}
                     onConfirm={handleDeleteConfirm}
-                    title="Delete Brand"
-                    description={`Are you sure you want to delete brand "${brandToDelete?.name}"? This action cannot be undone and will permanently delete the brand and all associated data.`}
+                    title="Delete Purchase Order"
+                    description={`Are you sure you want to delete Purchase Order "${purchaseOrderToDelete?.po_number}"? This action cannot be undone and will permanently delete the purchase order and all associated data.`}
                 />
             </div>
         </AppLayout>

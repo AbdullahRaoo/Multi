@@ -24,7 +24,7 @@ class ArticleController extends Controller
         if ($search = $request->input('search')) {
             $query->where(function ($q) use ($search) {
                 $q->where('article_style', 'like', "%{$search}%")
-                    ->orWhere('article_size', 'like', "%{$search}%")
+                    ->orWhere('description', 'like', "%{$search}%")
                     ->orWhereHas('articleType', function ($typeQuery) use ($search) {
                         $typeQuery->where('name', 'like', "%{$search}%");
                     });
@@ -61,23 +61,22 @@ class ArticleController extends Controller
         $validated = $request->validate([
             'article_type_id' => ['required', 'integer', 'exists:article_types,id'],
             'article_style' => ['required', 'string', 'max:255'],
-            'article_size' => ['nullable', 'string', 'max:255'],
+            'description' => ['nullable', 'string'],
         ], [
             'article_type_id.required' => 'Article type is required.',
             'article_type_id.exists' => 'Selected article type is invalid.',
             'article_style.required' => 'Article style is required.',
             'article_style.max' => 'Article style must not exceed 255 characters.',
-            'article_size.max' => 'Article size must not exceed 255 characters.',
         ]);
 
         Article::create([
             'brand_id' => $brand->id,
             'article_type_id' => (int) $validated['article_type_id'],
             'article_style' => $validated['article_style'],
-            'article_size' => $validated['article_size'] ?? null,
+            'description' => $validated['description'] ?? null,
         ]);
 
-        return redirect()->route('brands.articles.index', $brand->id)
+        return redirect(route('brands.show', $brand->id) . '?tab=articles')
             ->with('success', 'Article created successfully.');
     }
 
@@ -86,7 +85,7 @@ class ArticleController extends Controller
      */
     public function show(Brand $brand, Article $article): Response
     {
-        $article->load(['articleType', 'brand']);
+        $article->load(['articleType', 'brand', 'measurements.sizes']);
 
         return Inertia::render('articles/show', [
             'brand' => $brand,
@@ -117,22 +116,21 @@ class ArticleController extends Controller
         $validated = $request->validate([
             'article_type_id' => ['required', 'integer', 'exists:article_types,id'],
             'article_style' => ['required', 'string', 'max:255'],
-            'article_size' => ['nullable', 'string', 'max:255'],
+            'description' => ['nullable', 'string'],
         ], [
             'article_type_id.required' => 'Article type is required.',
             'article_type_id.exists' => 'Selected article type is invalid.',
             'article_style.required' => 'Article style is required.',
             'article_style.max' => 'Article style must not exceed 255 characters.',
-            'article_size.max' => 'Article size must not exceed 255 characters.',
         ]);
 
         $article->update([
             'article_type_id' => (int) $validated['article_type_id'],
             'article_style' => $validated['article_style'],
-            'article_size' => $validated['article_size'] ?? null,
+            'description' => $validated['description'] ?? null,
         ]);
 
-        return redirect()->route('brands.articles.index', $brand->id)
+        return redirect(route('brands.show', $brand->id) . '?tab=articles')
             ->with('success', 'Article updated successfully.');
     }
 
@@ -143,7 +141,7 @@ class ArticleController extends Controller
     {
         $article->delete();
 
-        return redirect()->route('brands.articles.index', $brand->id)
+        return redirect(route('brands.show', $brand->id) . '?tab=articles')
             ->with('success', 'Article deleted successfully.');
     }
 }

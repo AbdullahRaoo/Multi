@@ -9,11 +9,15 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import { Input } from '@/components/ui/input';
+import { DeleteConfirmationDialog } from '@/components/delete-confirmation-dialog';
 import AppLayout from '@/layouts/app-layout';
 import brandRoutes from '@/routes/brands';
 import { type BreadcrumbItem } from '@/types';
-import { Head, Link } from '@inertiajs/react';
-import { Pencil, ArrowLeft, Package, Plus, Eye } from 'lucide-react';
+import { type PaginatedData } from '@/types';
+import { Head, Link, router } from '@inertiajs/react';
+import { Pencil, ArrowLeft, Package, Plus, Eye, Search, Trash2 } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
 
 interface ArticleType {
     id: number;
@@ -23,9 +27,10 @@ interface ArticleType {
 interface Article {
     id: number;
     article_style: string;
-    article_size: string | null;
+    description: string | null;
     article_type: ArticleType;
     created_at: string;
+    updated_at: string;
 }
 
 interface Brand {
@@ -34,14 +39,75 @@ interface Brand {
     description: string | null;
     created_at: string;
     updated_at: string;
-    articles?: Article[];
+}
+
+interface Filters {
+    search: string;
 }
 
 interface Props {
     brand: Brand;
+    articles: PaginatedData<Article>;
+    filters: Filters;
 }
 
-export default function Show({ brand }: Props) {
+export default function Show({ brand, articles, filters }: Props) {
+    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+    const [articleToDelete, setArticleToDelete] = useState<{ id: number; article_style: string } | null>(null);
+    const [search, setSearch] = useState(filters.search || '');
+    
+    // Determine default tab - check for tab in URL or flash message
+    const getDefaultTab = () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const tabParam = urlParams.get('tab');
+        if (tabParam === 'articles') {
+            return 'articles';
+        }
+        return 'details';
+    };
+    
+    const [activeTab, setActiveTab] = useState(getDefaultTab());
+    
+    // Auto-switch to articles tab if redirected from article creation
+    useEffect(() => {
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('tab') === 'articles') {
+            setActiveTab('articles');
+        }
+    }, []);
+
+    const handleDeleteClick = (article: Article) => {
+        setArticleToDelete({ id: article.id, article_style: article.article_style });
+        setDeleteDialogOpen(true);
+    };
+
+    const handleDeleteConfirm = () => {
+        if (articleToDelete) {
+            router.delete(brandRoutes.articles.destroy({ brand: brand.id, article: articleToDelete.id }).url);
+        }
+    };
+
+    const applyFilters = useCallback(() => {
+        const params = new URLSearchParams();
+        
+        if (search) params.set('search', search);
+
+        router.get(brandRoutes.show(brand.id).url + (params.toString() ? '?' + params.toString() : ''), {}, {
+            preserveState: true,
+            preserveScroll: true,
+            replace: true,
+        });
+    }, [search, brand.id]);
+
+    // Debounced search
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            applyFilters();
+        }, 500);
+
+        return () => clearTimeout(timer);
+    }, [search, applyFilters]);
+
     const breadcrumbs: BreadcrumbItem[] = [
         {
             title: 'Brands',
@@ -81,7 +147,7 @@ export default function Show({ brand }: Props) {
                     </div>
                 </div>
 
-                <Tabs defaultValue="details" className="w-full">
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                     <TabsList className="grid w-full max-w-md grid-cols-2">
                         <TabsTrigger value="details">Details</TabsTrigger>
                         <TabsTrigger value="articles">
@@ -135,84 +201,149 @@ export default function Show({ brand }: Props) {
                     </TabsContent>
 
                     <TabsContent value="articles" className="mt-6">
-                        <Card>
-                            <CardHeader>
-                                <div className="flex items-center justify-between">
-                                    <CardTitle className="flex items-center gap-2">
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <h2 className="text-xl font-semibold flex items-center gap-2">
                                         <Package className="h-5 w-5" />
-                                        Articles ({brand.articles?.length || 0})
-                                    </CardTitle>
-                                    <Link href={brandRoutes.articles.index(brand.id).url}>
-                                        <Button size="sm">
-                                            <Plus className="h-4 w-4 mr-2" />
-                                            Add Article
-                                        </Button>
-                                    </Link>
+                                        Articles ({articles.total || 0})
+                                    </h2>
+                                    <p className="text-sm text-neutral-600 dark:text-neutral-400">
+                                        Manage articles for this brand
+                                    </p>
                                 </div>
-                            </CardHeader>
-                            <CardContent>
-                                {!brand.articles || brand.articles.length === 0 ? (
-                                    <div className="flex flex-col items-center justify-center py-12 text-center">
-                                        <div className="rounded-full bg-neutral-100 dark:bg-neutral-800 p-6 mb-4">
-                                            <Package className="h-12 w-12 text-neutral-400" />
-                                        </div>
-                                        <h3 className="text-lg font-semibold mb-2">No Articles Available</h3>
-                                        <p className="text-sm text-neutral-600 dark:text-neutral-400 max-w-md mb-4">
-                                            Articles associated with this brand will appear here.
-                                        </p>
-                                        <Link href={brandRoutes.articles.create(brand.id).url}>
-                                            <Button>
-                                                <Plus className="h-4 w-4 mr-2" />
-                                                Create First Article
-                                            </Button>
-                                        </Link>
-                                    </div>
-                                ) : (
-                                    <div className="rounded-lg border border-sidebar-border bg-white dark:bg-neutral-900 overflow-x-auto">
-                                        <Table>
-                                            <TableHeader>
-                                                <TableRow>
-                                                    <TableHead>Article Type</TableHead>
-                                                    <TableHead>Style</TableHead>
-                                                    <TableHead>Size</TableHead>
-                                                    <TableHead>Created At</TableHead>
-                                                    <TableHead className="text-right">Actions</TableHead>
+                                <Link href={brandRoutes.articles.create(brand.id).url}>
+                                    <Button>
+                                        <Plus className="mr-2 h-4 w-4" />
+                                        Add Article
+                                    </Button>
+                                </Link>
+                            </div>
+
+                            <div className="flex items-center gap-4">
+                                <div className="relative flex-1">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-neutral-500" />
+                                    <Input
+                                        type="text"
+                                        placeholder="Search by type, style, or description..."
+                                        value={search}
+                                        onChange={(e) => setSearch(e.target.value)}
+                                        className="pl-9"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="rounded-lg border border-sidebar-border bg-white dark:bg-neutral-900">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Article Type</TableHead>
+                                            <TableHead>Style</TableHead>
+                                            <TableHead>Description</TableHead>
+                                            <TableHead>Created At</TableHead>
+                                            <TableHead>Updated At</TableHead>
+                                            <TableHead className="text-right">Actions</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {articles.data.length === 0 ? (
+                                            <TableRow>
+                                                <TableCell colSpan={6} className="text-center text-neutral-500 py-8">
+                                                    No articles found. Create your first one!
+                                                </TableCell>
+                                            </TableRow>
+                                        ) : (
+                                            articles.data.map((article) => (
+                                                <TableRow 
+                                                    key={article.id}
+                                                    className="cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
+                                                    onClick={() => router.visit(brandRoutes.articles.show({ brand: brand.id, article: article.id }).url)}
+                                                >
+                                                    <TableCell className="font-medium">
+                                                        {article.article_type?.name || 'N/A'}
+                                                    </TableCell>
+                                                    <TableCell>{article.article_style}</TableCell>
+                                                    <TableCell>
+                                                        {article.description ? (
+                                                            <span className="line-clamp-2 max-w-xs">
+                                                                {article.description}
+                                                            </span>
+                                                        ) : (
+                                                            <span className="text-neutral-400">N/A</span>
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        {new Date(article.created_at).toLocaleDateString()}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        {new Date(article.updated_at).toLocaleDateString()}
+                                                    </TableCell>
+                                                    <TableCell className="text-right">
+                                                        <div 
+                                                            className="flex items-center justify-end gap-2"
+                                                            onClick={(e) => e.stopPropagation()}
+                                                        >
+                                                            <Link href={brandRoutes.articles.show({ brand: brand.id, article: article.id }).url}>
+                                                                <Button variant="outline" size="sm">
+                                                                    <Eye className="h-4 w-4" />
+                                                                </Button>
+                                                            </Link>
+                                                            <Link href={brandRoutes.articles.edit({ brand: brand.id, article: article.id }).url}>
+                                                                <Button variant="outline" size="sm">
+                                                                    <Pencil className="h-4 w-4" />
+                                                                </Button>
+                                                            </Link>
+                                                            <Button
+                                                                variant="outline"
+                                                                size="sm"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    handleDeleteClick(article);
+                                                                }}
+                                                            >
+                                                                <Trash2 className="h-4 w-4 text-red-500" />
+                                                            </Button>
+                                                        </div>
+                                                    </TableCell>
                                                 </TableRow>
-                                            </TableHeader>
-                                            <TableBody>
-                                                {brand.articles.map((article) => (
-                                                    <TableRow key={article.id}>
-                                                        <TableCell className="font-medium">
-                                                            {article.article_type?.name || 'N/A'}
-                                                        </TableCell>
-                                                        <TableCell>{article.article_style}</TableCell>
-                                                        <TableCell>
-                                                            {article.article_size || (
-                                                                <span className="text-neutral-400">N/A</span>
-                                                            )}
-                                                        </TableCell>
-                                                        <TableCell>
-                                                            {new Date(article.created_at).toLocaleDateString()}
-                                                        </TableCell>
-                                                        <TableCell className="text-right">
-                                                            <div className="flex items-center justify-end gap-2">
-                                                                <Link href={brandRoutes.articles.show({ brand: brand.id, article: article.id }).url}>
-                                                                    <Button variant="outline" size="sm">
-                                                                        <Eye className="h-4 w-4" />
-                                                                    </Button>
-                                                                </Link>
-                                                            </div>
-                                                        </TableCell>
-                                                    </TableRow>
-                                                ))}
-                                            </TableBody>
-                                        </Table>
+                                            ))
+                                        )}
+                                    </TableBody>
+                                </Table>
+                            </div>
+
+                            {articles.links && articles.links.length > 3 && (
+                                <div className="flex items-center justify-between">
+                                    <div className="text-sm text-neutral-600 dark:text-neutral-400">
+                                        Showing {articles.from} to {articles.to} of {articles.total} results
                                     </div>
-                                )}
-                            </CardContent>
-                        </Card>
+                                    <div className="flex gap-2">
+                                        {articles.links.map((link, index) => (
+                                            <Link
+                                                key={index}
+                                                href={link.url || '#'}
+                                                className={`rounded px-3 py-1 text-sm ${
+                                                    link.active
+                                                        ? 'bg-sidebar-primary text-white'
+                                                        : 'bg-white text-neutral-700 hover:bg-neutral-100 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700'
+                                                } ${!link.url ? 'pointer-events-none opacity-50' : ''}`}
+                                                dangerouslySetInnerHTML={{ __html: link.label }}
+                                            />
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                     </TabsContent>
                 </Tabs>
+
+                <DeleteConfirmationDialog
+                    open={deleteDialogOpen}
+                    onOpenChange={setDeleteDialogOpen}
+                    onConfirm={handleDeleteConfirm}
+                    title="Delete Article"
+                    description={`Are you sure you want to delete article "${articleToDelete?.article_style}"? This action cannot be undone and will permanently delete the article and all associated data.`}
+                />
             </div>
         </AppLayout>
     );

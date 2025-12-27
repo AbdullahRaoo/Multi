@@ -30,7 +30,7 @@ interface ArticleType {
 interface Article {
     id: number;
     article_style: string;
-    article_size: string | null;
+    description: string | null;
     article_type: ArticleType;
     created_at: string;
     updated_at: string;
@@ -131,7 +131,7 @@ export default function Index({ brand, articles, filters }: Props) {
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-neutral-500" />
                         <Input
                             type="text"
-                            placeholder="Search by type, style, or size..."
+                            placeholder="Search by type, style, or description..."
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                             className="pl-9"
@@ -145,7 +145,7 @@ export default function Index({ brand, articles, filters }: Props) {
                             <TableRow>
                                 <TableHead>Article Type</TableHead>
                                 <TableHead>Style</TableHead>
-                                <TableHead>Size</TableHead>
+                                <TableHead>Description</TableHead>
                                 <TableHead>Created At</TableHead>
                                 <TableHead>Updated At</TableHead>
                                 <TableHead className="text-right">Actions</TableHead>
@@ -166,7 +166,11 @@ export default function Index({ brand, articles, filters }: Props) {
                                         </TableCell>
                                         <TableCell>{article.article_style}</TableCell>
                                         <TableCell>
-                                            {article.article_size || (
+                                            {article.description ? (
+                                                <span className="line-clamp-2 max-w-xs">
+                                                    {article.description}
+                                                </span>
+                                            ) : (
                                                 <span className="text-neutral-400">N/A</span>
                                             )}
                                         </TableCell>

@@ -1,5 +1,4 @@
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
     Table,
     TableBody,
@@ -8,22 +7,24 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import { Input } from '@/components/ui/input';
 import { DeleteConfirmationDialog } from '@/components/delete-confirmation-dialog';
 import AppLayout from '@/layouts/app-layout';
 import brandRoutes from '@/routes/brands';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router } from '@inertiajs/react';
-import { Pencil, ArrowLeft, Plus, Eye, Trash2 } from 'lucide-react';
-import { useState } from 'react';
+import { Plus, Eye, Pencil, Trash2, Search, ArrowLeft } from 'lucide-react';
+import { type PaginatedData } from '@/types';
+import { useState, useEffect, useCallback } from 'react';
 
 interface Brand {
     id: number;
     name: string;
 }
 
-interface ArticleType {
+interface Article {
     id: number;
-    name: string;
+    article_style: string;
 }
 
 interface MeasurementSize {
@@ -44,41 +45,21 @@ interface Measurement {
     updated_at: string;
 }
 
-interface Article {
-    id: number;
-    article_style: string;
-    description: string | null;
-    article_type: ArticleType;
-    measurements?: Measurement[];
-    created_at: string;
-    updated_at: string;
+interface Filters {
+    search: string;
 }
 
 interface Props {
     brand: Brand;
     article: Article;
+    measurements: PaginatedData<Measurement>;
+    filters: Filters;
 }
 
-export default function Show({ brand, article }: Props) {
+export default function Index({ brand, article, measurements, filters }: Props) {
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [measurementToDelete, setMeasurementToDelete] = useState<{ id: number; code: string } | null>(null);
-
-    const handleDeleteClick = (measurement: Measurement) => {
-        setMeasurementToDelete({ id: measurement.id, code: measurement.code });
-        setDeleteDialogOpen(true);
-    };
-
-    const handleDeleteConfirm = () => {
-        if (measurementToDelete) {
-            router.delete(brandRoutes.articles.measurements.destroy({ brand: brand.id, article: article.id, measurement: measurementToDelete.id }).url, {
-                preserveScroll: true,
-                onSuccess: () => {
-                    setDeleteDialogOpen(false);
-                    setMeasurementToDelete(null);
-                },
-            });
-        }
-    };
+    const [search, setSearch] = useState(filters.search || '');
 
     const breadcrumbs: BreadcrumbItem[] = [
         {
@@ -97,104 +78,83 @@ export default function Show({ brand, article }: Props) {
             title: article.article_style,
             href: brandRoutes.articles.show({ brand: brand.id, article: article.id }).url,
         },
+        {
+            title: 'Measurements',
+            href: brandRoutes.articles.measurements.index({ brand: brand.id, article: article.id }).url,
+        },
     ];
+
+    const handleDeleteClick = (measurement: Measurement) => {
+        setMeasurementToDelete({ id: measurement.id, code: measurement.code });
+        setDeleteDialogOpen(true);
+    };
+
+    const handleDeleteConfirm = () => {
+        if (measurementToDelete) {
+            router.delete(brandRoutes.articles.measurements.destroy({ brand: brand.id, article: article.id, measurement: measurementToDelete.id }).url);
+        }
+    };
+
+    const applyFilters = useCallback(() => {
+        const params = new URLSearchParams();
+        
+        if (search) params.set('search', search);
+
+        router.get(brandRoutes.articles.measurements.index({ brand: brand.id, article: article.id }).url + (params.toString() ? '?' + params.toString() : ''), {}, {
+            preserveState: true,
+            preserveScroll: true,
+            replace: true,
+        });
+    }, [search, brand.id, article.id]);
+
+    // Debounced search
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            applyFilters();
+        }, 500);
+
+        return () => clearTimeout(timer);
+    }, [search, applyFilters]);
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title={`Article - ${article.article_style}`} />
+            <Head title={`Measurements - ${article.article_style}`} />
 
             <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
                 <div className="flex items-center justify-between">
                     <div>
-                        <h1 className="text-2xl font-semibold">Article Details</h1>
+                        <h1 className="text-2xl font-semibold">Measurements</h1>
                         <p className="text-sm text-neutral-600 dark:text-neutral-400">
-                            View article information
+                            Manage measurements for {article.article_style}
                         </p>
                     </div>
                     <div className="flex items-center gap-2">
-                        <Button 
-                            variant="outline"
-                            onClick={() => router.visit(brandRoutes.show(brand.id).url + '?tab=articles')}
-                        >
-                            <ArrowLeft className="h-4 w-4 mr-2" />
-                            Back
-                        </Button>
-                        <Link href={brandRoutes.articles.edit({ brand: brand.id, article: article.id }).url}>
+                        <Link href={brandRoutes.articles.show({ brand: brand.id, article: article.id }).url}>
                             <Button variant="outline">
-                                <Pencil className="h-4 w-4 mr-2" />
-                                Edit
+                                <ArrowLeft className="h-4 w-4 mr-2" />
+                                Back to Article
+                            </Button>
+                        </Link>
+                        <Link href={brandRoutes.articles.measurements.create({ brand: brand.id, article: article.id }).url}>
+                            <Button>
+                                <Plus className="mr-2 h-4 w-4" />
+                                Add Measurement
                             </Button>
                         </Link>
                     </div>
                 </div>
 
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Article Information</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="grid gap-4 md:grid-cols-2">
-                            <div>
-                                <p className="text-sm font-medium text-neutral-600 dark:text-neutral-400">
-                                    Brand
-                                </p>
-                                <p className="text-base font-semibold">{brand.name}</p>
-                            </div>
-                            <div>
-                                <p className="text-sm font-medium text-neutral-600 dark:text-neutral-400">
-                                    Article Type
-                                </p>
-                                <p className="text-base">{article.article_type?.name || 'N/A'}</p>
-                            </div>
-                            <div>
-                                <p className="text-sm font-medium text-neutral-600 dark:text-neutral-400">
-                                    Article Style
-                                </p>
-                                <p className="text-base font-semibold">{article.article_style}</p>
-                            </div>
-                            {article.description && (
-                                <div className="md:col-span-2">
-                                    <p className="text-sm font-medium text-neutral-600 dark:text-neutral-400 mb-2">
-                                        Description
-                                    </p>
-                                    <p className="text-base whitespace-pre-wrap bg-neutral-50 dark:bg-neutral-800 p-4 rounded-lg border border-neutral-200 dark:border-neutral-700">
-                                        {article.description}
-                                    </p>
-                                </div>
-                            )}
-                            <div>
-                                <p className="text-sm font-medium text-neutral-600 dark:text-neutral-400">
-                                    Created At
-                                </p>
-                                <p className="text-base">
-                                    {new Date(article.created_at).toLocaleString()}
-                                </p>
-                            </div>
-                            <div>
-                                <p className="text-sm font-medium text-neutral-600 dark:text-neutral-400">
-                                    Updated At
-                                </p>
-                                <p className="text-base">
-                                    {new Date(article.updated_at).toLocaleString()}
-                                </p>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h2 className="text-xl font-semibold">Measurements</h2>
-                        <p className="text-sm text-neutral-600 dark:text-neutral-400">
-                            Manage measurements for this article
-                        </p>
+                <div className="flex items-center gap-4">
+                    <div className="relative flex-1">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-neutral-500" />
+                        <Input
+                            type="text"
+                            placeholder="Search by code or measurement..."
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            className="pl-9"
+                        />
                     </div>
-                    <Link href={brandRoutes.articles.measurements.create({ brand: brand.id, article: article.id }).url}>
-                        <Button>
-                            <Plus className="mr-2 h-4 w-4" />
-                            Add Measurement
-                        </Button>
-                    </Link>
                 </div>
 
                 <div className="rounded-lg border border-sidebar-border bg-white dark:bg-neutral-900">
@@ -212,13 +172,15 @@ export default function Show({ brand, article }: Props) {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {article.measurements && article.measurements.length > 0 ? (
-                                article.measurements.map((measurement) => (
-                                    <TableRow 
-                                        key={measurement.id}
-                                        className="cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
-                                        onClick={() => router.visit(brandRoutes.articles.measurements.show({ brand: brand.id, article: article.id, measurement: measurement.id }).url)}
-                                    >
+                            {measurements.data.length === 0 ? (
+                                <TableRow>
+                                    <TableCell colSpan={8} className="text-center text-neutral-500">
+                                        No measurements found. Create your first one!
+                                    </TableCell>
+                                </TableRow>
+                            ) : (
+                                measurements.data.map((measurement) => (
+                                    <TableRow key={measurement.id}>
                                         <TableCell className="font-medium">
                                             {measurement.code}
                                         </TableCell>
@@ -249,10 +211,7 @@ export default function Show({ brand, article }: Props) {
                                             {new Date(measurement.updated_at).toLocaleDateString()}
                                         </TableCell>
                                         <TableCell className="text-right">
-                                            <div 
-                                                className="flex items-center justify-end gap-2"
-                                                onClick={(e) => e.stopPropagation()}
-                                            >
+                                            <div className="flex items-center justify-end gap-2">
                                                 <Link href={brandRoutes.articles.measurements.show({ brand: brand.id, article: article.id, measurement: measurement.id }).url}>
                                                     <Button variant="outline" size="sm">
                                                         <Eye className="h-4 w-4" />
@@ -266,10 +225,7 @@ export default function Show({ brand, article }: Props) {
                                                 <Button
                                                     variant="outline"
                                                     size="sm"
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        handleDeleteClick(measurement);
-                                                    }}
+                                                    onClick={() => handleDeleteClick(measurement)}
                                                 >
                                                     <Trash2 className="h-4 w-4 text-red-500" />
                                                 </Button>
@@ -277,16 +233,32 @@ export default function Show({ brand, article }: Props) {
                                         </TableCell>
                                     </TableRow>
                                 ))
-                            ) : (
-                                <TableRow>
-                                    <TableCell colSpan={8} className="text-center text-neutral-500 py-8">
-                                        No measurements found. Create your first one!
-                                    </TableCell>
-                                </TableRow>
                             )}
                         </TableBody>
                     </Table>
                 </div>
+
+                {measurements.links && measurements.links.length > 3 && (
+                    <div className="flex items-center justify-between">
+                        <div className="text-sm text-neutral-600 dark:text-neutral-400">
+                            Showing {measurements.from} to {measurements.to} of {measurements.total} results
+                        </div>
+                        <div className="flex gap-2">
+                            {measurements.links.map((link, index) => (
+                                <Link
+                                    key={index}
+                                    href={link.url || '#'}
+                                    className={`rounded px-3 py-1 text-sm ${
+                                        link.active
+                                            ? 'bg-sidebar-primary text-white'
+                                            : 'bg-white text-neutral-700 hover:bg-neutral-100 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700'
+                                    } ${!link.url ? 'pointer-events-none opacity-50' : ''}`}
+                                    dangerouslySetInnerHTML={{ __html: link.label }}
+                                />
+                            ))}
+                        </div>
+                    </div>
+                )}
 
                 <DeleteConfirmationDialog
                     open={deleteDialogOpen}

@@ -7,15 +7,19 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-class Article extends Model
+class PurchaseOrder extends Model
 {
     use HasFactory;
 
     protected $fillable = [
+        'po_number',
+        'date',
         'brand_id',
-        'article_type_id',
-        'article_style',
-        'description',
+        'country',
+    ];
+
+    protected $casts = [
+        'date' => 'date',
     ];
 
     public function brand(): BelongsTo
@@ -23,13 +27,13 @@ class Article extends Model
         return $this->belongsTo(Brand::class);
     }
 
-    public function articleType(): BelongsTo
+    public function articles(): HasMany
     {
-        return $this->belongsTo(ArticleType::class);
+        return $this->hasMany(PurchaseOrderArticle::class);
     }
 
-    public function measurements(): HasMany
+    public function clientReferences(): HasMany
     {
-        return $this->hasMany(Measurement::class);
+        return $this->hasMany(PurchaseOrderClientReference::class);
     }
 }

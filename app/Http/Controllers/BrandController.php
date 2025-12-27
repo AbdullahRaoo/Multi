@@ -64,12 +64,27 @@ class BrandController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(Brand $brand): Response
+    public function show(Request $request, Brand $brand): Response
     {
-        $brand->load(['articles.articleType']);
+        $query = $brand->articles()->with('articleType');
+
+        // Apply search filter
+        if ($search = $request->input('search')) {
+            $query->where(function ($q) use ($search) {
+                $q->where('article_style', 'like', "%{$search}%")
+                    ->orWhere('description', 'like', "%{$search}%")
+                    ->orWhereHas('articleType', function ($typeQuery) use ($search) {
+                        $typeQuery->where('name', 'like', "%{$search}%");
+                    });
+            });
+        }
+
+        $articles = $query->latest()->paginate(15)->withQueryString();
         
         return Inertia::render('brands/show', [
             'brand' => $brand,
+            'articles' => $articles,
+            'filters' => $request->only(['search']),
         ]);
     }
 

@@ -55,7 +55,7 @@ export default function Create({ brand, articleTypes }: Props) {
     const { data, setData, post, processing, errors, reset } = useForm({
         article_type_id: '',
         article_style: '',
-        article_size: '',
+        description: '',
     });
 
     const submit = (e: React.FormEvent) => {
@@ -123,13 +123,15 @@ export default function Create({ brand, articleTypes }: Props) {
                             </div>
 
                             <div className="grid gap-2">
-                                <Label htmlFor="article_size">Article Size</Label>
-                                <Input
-                                    id="article_size"
-                                    value={data.article_size}
-                                    onChange={(e) => setData('article_size', e.target.value)}
+                                <Label htmlFor="description">Description</Label>
+                                <textarea
+                                    id="description"
+                                    value={data.description}
+                                    onChange={(e) => setData('description', e.target.value)}
+                                    rows={4}
+                                    className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                                 />
-                                <InputError message={errors.article_size} />
+                                <InputError message={errors.description} />
                             </div>
                         </CardContent>
                     </Card>
@@ -141,7 +143,7 @@ export default function Create({ brand, articleTypes }: Props) {
                         <Button
                             type="button"
                             variant="outline"
-                            onClick={() => router.visit(brandRoutes.articles.index(brand.id).url)}
+                            onClick={() => router.visit(brandRoutes.show(brand.id).url + '?tab=articles')}
                         >
                             <ArrowLeft className="h-4 w-4 mr-2" />
                             Cancel
