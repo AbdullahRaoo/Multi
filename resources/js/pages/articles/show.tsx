@@ -133,7 +133,7 @@ export default function Show({ brand, article }: Props) {
                         <CardTitle>Article Information</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="grid gap-4 md:grid-cols-2">
+                        <div className="grid gap-4 md:grid-cols-3">
                             <div>
                                 <p className="text-sm font-medium text-neutral-600 dark:text-neutral-400">
                                     Brand
@@ -162,7 +162,7 @@ export default function Show({ brand, article }: Props) {
                                     </p>
                                 </div>
                             )}
-                            <div>
+                            {/* <div>
                                 <p className="text-sm font-medium text-neutral-600 dark:text-neutral-400">
                                     Created At
                                 </p>
@@ -177,7 +177,7 @@ export default function Show({ brand, article }: Props) {
                                 <p className="text-base">
                                     {new Date(article.updated_at).toLocaleString()}
                                 </p>
-                            </div>
+                            </div> */}
                         </div>
                     </CardContent>
                 </Card>
@@ -253,11 +253,11 @@ export default function Show({ brand, article }: Props) {
                                                 className="flex items-center justify-end gap-2"
                                                 onClick={(e) => e.stopPropagation()}
                                             >
-                                                <Link href={brandRoutes.articles.measurements.show({ brand: brand.id, article: article.id, measurement: measurement.id }).url}>
+                                                {/* <Link href={brandRoutes.articles.measurements.show({ brand: brand.id, article: article.id, measurement: measurement.id }).url}>
                                                     <Button variant="outline" size="sm">
                                                         <Eye className="h-4 w-4" />
                                                     </Button>
-                                                </Link>
+                                                </Link> */}
                                                 <Link href={brandRoutes.articles.measurements.edit({ brand: brand.id, article: article.id, measurement: measurement.id }).url}>
                                                     <Button variant="outline" size="sm">
                                                         <Pencil className="h-4 w-4" />

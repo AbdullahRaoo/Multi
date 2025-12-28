@@ -4,19 +4,13 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import AppLayout from '@/layouts/app-layout';
 import brandRoutes from '@/routes/brands';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router, useForm } from '@inertiajs/react';
 import { ArrowLeft, Plus, Trash2 } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 interface Brand {
     id: number;
@@ -91,7 +85,7 @@ export default function Edit({ brand, article, measurement }: Props) {
                   value: s.value.toString(),
                   unit: s.unit,
               }))
-            : [{ size: '', value: '', unit: 'cm' }]
+            : [{ size: '', value: '', unit: 'cm' }],
     );
 
     const { data, setData, put, processing, errors } = useForm({
@@ -127,9 +121,9 @@ export default function Edit({ brand, article, measurement }: Props) {
 
     const submit = (e: React.FormEvent) => {
         e.preventDefault();
-        
+
         // Transform sizes to ensure numeric values
-        const transformedSizes = sizes.map(size => ({
+        const transformedSizes = sizes.map((size) => ({
             size: size.size,
             value: parseFloat(size.value) || 0,
             unit: size.unit,
@@ -156,9 +150,7 @@ export default function Edit({ brand, article, measurement }: Props) {
             <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
                 <div>
                     <h1 className="text-2xl font-semibold">Edit Measurement</h1>
-                    <p className="text-sm text-neutral-600 dark:text-neutral-400">
-                        Update measurement details for {article.article_style}
-                    </p>
+                    <p className="text-sm text-neutral-600 dark:text-neutral-400">Update measurement details for {article.article_style}</p>
                 </div>
 
                 <form onSubmit={submit} className="space-y-6">
@@ -167,29 +159,24 @@ export default function Edit({ brand, article, measurement }: Props) {
                             <CardTitle>Measurement Details</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                            <div className="grid gap-2">
-                                <Label htmlFor="code">Code *</Label>
-                                <Input
-                                    id="code"
-                                    value={data.code}
-                                    onChange={(e) => setData('code', e.target.value)}
-                                    required
-                                />
-                                <InputError message={errors.code} />
-                            </div>
+                            <div className="grid gap-4 md:grid-cols-4">
+                                <div className="grid gap-2">
+                                    <Label htmlFor="code">Code *</Label>
+                                    <Input id="code" value={data.code} onChange={(e) => setData('code', e.target.value)} required />
+                                    <InputError message={errors.code} />
+                                </div>
 
-                            <div className="grid gap-2">
-                                <Label htmlFor="measurement">Measurement *</Label>
-                                <Input
-                                    id="measurement"
-                                    value={data.measurement}
-                                    onChange={(e) => setData('measurement', e.target.value)}
-                                    required
-                                />
-                                <InputError message={errors.measurement} />
-                            </div>
+                                <div className="grid gap-2">
+                                    <Label htmlFor="measurement">Measurement *</Label>
+                                    <Input
+                                        id="measurement"
+                                        value={data.measurement}
+                                        onChange={(e) => setData('measurement', e.target.value)}
+                                        required
+                                    />
+                                    <InputError message={errors.measurement} />
+                                </div>
 
-                            <div className="grid gap-4 md:grid-cols-2">
                                 <div className="grid gap-2">
                                     <Label htmlFor="tol_plus">Tol (+)</Label>
                                     <Input
@@ -221,20 +208,18 @@ export default function Edit({ brand, article, measurement }: Props) {
                         <CardHeader>
                             <div className="flex items-center justify-between">
                                 <CardTitle>Size Section *</CardTitle>
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={addSizeSection}
-                                >
-                                    <Plus className="h-4 w-4 mr-2" />
+                                <Button type="button" variant="outline" size="sm" onClick={addSizeSection}>
+                                    <Plus className="mr-2 h-4 w-4" />
                                     Add More
                                 </Button>
                             </div>
                         </CardHeader>
                         <CardContent className="space-y-4">
                             {sizes.map((size, index) => (
-                                <div key={index} className="grid gap-4 md:grid-cols-4 items-end border-b border-neutral-200 dark:border-neutral-700 pb-4">
+                                <div
+                                    key={index}
+                                    className="grid items-end gap-4 border-b border-neutral-200 pb-4 md:grid-cols-4 dark:border-neutral-700"
+                                >
                                     <div className="grid gap-2">
                                         <Label htmlFor={`size-${index}`}>Size *</Label>
                                         <Input
@@ -261,11 +246,7 @@ export default function Edit({ brand, article, measurement }: Props) {
 
                                     <div className="grid gap-2">
                                         <Label htmlFor={`unit-${index}`}>Unit *</Label>
-                                        <Select
-                                            value={size.unit}
-                                            onValueChange={(value) => updateSizeSection(index, 'unit', value)}
-                                            required
-                                        >
+                                        <Select value={size.unit} onValueChange={(value) => updateSizeSection(index, 'unit', value)} required>
                                             <SelectTrigger>
                                                 <SelectValue placeholder="Select unit" />
                                             </SelectTrigger>
@@ -292,9 +273,7 @@ export default function Edit({ brand, article, measurement }: Props) {
                                     </div>
                                 </div>
                             ))}
-                            {errors.sizes && typeof errors.sizes === 'string' && (
-                                <InputError message={errors.sizes} />
-                            )}
+                            {errors.sizes && typeof errors.sizes === 'string' && <InputError message={errors.sizes} />}
                         </CardContent>
                     </Card>
 
@@ -307,7 +286,7 @@ export default function Edit({ brand, article, measurement }: Props) {
                             variant="outline"
                             onClick={() => router.visit(brandRoutes.articles.show({ brand: brand.id, article: article.id }).url)}
                         >
-                            <ArrowLeft className="h-4 w-4 mr-2" />
+                            <ArrowLeft className="mr-2 h-4 w-4" />
                             Cancel
                         </Button>
                     </div>
@@ -316,4 +295,3 @@ export default function Edit({ brand, article, measurement }: Props) {
         </AppLayout>
     );
 }
-
