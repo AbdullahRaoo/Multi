@@ -299,7 +299,7 @@ export default function Edit({ purchaseOrder, brands, articleTypes }: Props) {
                             <CardTitle>Order Details</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                            <div className="grid gap-4 md:grid-cols-2">
+                            <div className="grid gap-4 pb-4 md:grid-cols-2">
                                 <div className="grid gap-2">
                                     <Label htmlFor="po_number">PO Number *</Label>
                                     <Input
@@ -379,7 +379,7 @@ export default function Edit({ purchaseOrder, brands, articleTypes }: Props) {
                         </CardHeader>
                         <CardContent className="space-y-4">
                             {articleSections.map((article, index) => (
-                                <div key={index} className="grid gap-4 border-b border-neutral-200 dark:border-neutral-700 pb-4">
+                                <div key={index} className="grid gap-4 pb-4">
                                     <div className="flex items-center justify-between">
                                         <h4 className="font-medium">Article {index + 1}</h4>
                                         {articleSections.length > 1 && (
@@ -498,7 +498,7 @@ export default function Edit({ purchaseOrder, brands, articleTypes }: Props) {
                         </CardHeader>
                         <CardContent className="space-y-4">
                             {clientReferenceSections.map((ref, index) => (
-                                <div key={index} className="grid gap-4 border-b border-neutral-200 dark:border-neutral-700 pb-4">
+                                <div key={index} className="grid gap-4 pb-4">
                                     <div className="flex items-center justify-between">
                                         <h4 className="font-medium">Client Reference {index + 1}</h4>
                                         {clientReferenceSections.length > 1 && (

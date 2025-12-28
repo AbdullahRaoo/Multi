@@ -4,20 +4,14 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import AppLayout from '@/layouts/app-layout';
 import purchaseOrderRoutes from '@/routes/purchase-orders';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router, useForm } from '@inertiajs/react';
-import { ArrowLeft, Plus, Trash2 } from 'lucide-react';
-import { useState, useEffect } from 'react';
 import axios from 'axios';
+import { ArrowLeft, Plus, Trash2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 interface Brand {
     id: number;
@@ -68,7 +62,7 @@ export default function Create({ brands, articleTypes }: Props) {
             href: purchaseOrderRoutes.index().url,
         },
         {
-            title: 'Create Purchase Order',
+            title: 'Add Purchase Order',
             href: purchaseOrderRoutes.create().url,
         },
     ];
@@ -106,7 +100,8 @@ export default function Create({ brands, articleTypes }: Props) {
     // Fetch articles when brand is selected
     useEffect(() => {
         if (selectedBrandId) {
-            axios.get(`/brands/${selectedBrandId}/articles-for-po`)
+            axios
+                .get(`/brands/${selectedBrandId}/articles-for-po`)
                 .then((response) => {
                     setArticles(response.data);
                 })
@@ -150,16 +145,16 @@ export default function Create({ brands, articleTypes }: Props) {
     const updateArticleSection = (index: number, field: keyof ArticleSection, value: string) => {
         const newSections = [...articleSections];
         newSections[index] = { ...newSections[index], [field]: value };
-        
+
         // Auto-populate article style and description when article is selected
         if (field === 'article_style' && value) {
-            const selectedArticle = articles.find(a => a.article_style === value);
+            const selectedArticle = articles.find((a) => a.article_style === value);
             if (selectedArticle) {
                 newSections[index].article_type_id = selectedArticle.article_type_id.toString();
                 newSections[index].article_description = selectedArticle.article_description || '';
             }
         }
-        
+
         setArticleSections(newSections);
     };
 
@@ -190,9 +185,9 @@ export default function Create({ brands, articleTypes }: Props) {
 
     const submit = (e: React.FormEvent) => {
         e.preventDefault();
-        
+
         // Transform data for submission
-        const transformedArticles = articleSections.map(article => ({
+        const transformedArticles = articleSections.map((article) => ({
             article_type_id: parseInt(article.article_type_id) || 0,
             article_style: article.article_style,
             article_description: article.article_description || null,
@@ -200,7 +195,7 @@ export default function Create({ brands, articleTypes }: Props) {
             order_quantity: parseInt(article.order_quantity) || 0,
         }));
 
-        const transformedClientReferences = clientReferenceSections.map(ref => ({
+        const transformedClientReferences = clientReferenceSections.map((ref) => ({
             reference_name: ref.reference_name,
             reference_number: ref.reference_number || null,
             reference_email_address: ref.reference_email_address || null,
@@ -208,23 +203,27 @@ export default function Create({ brands, articleTypes }: Props) {
             email_date: ref.email_date || null,
         }));
 
-        router.post(store().url, {
-            po_number: data.po_number,
-            date: data.date,
-            brand_id: parseInt(data.brand_id as string) || 0,
-            country: data.country,
-            articles: transformedArticles,
-            client_references: transformedClientReferences,
-        }, {
-            preserveScroll: true,
-            onSuccess: () => {
-                console.log('Purchase Order created successfully');
-                reset();
+        router.post(
+            store().url,
+            {
+                po_number: data.po_number,
+                date: data.date,
+                brand_id: parseInt(data.brand_id as string) || 0,
+                country: data.country,
+                articles: transformedArticles,
+                client_references: transformedClientReferences,
             },
-            onError: (errors) => {
-                console.error('Validation errors:', errors);
+            {
+                preserveScroll: true,
+                onSuccess: () => {
+                    console.log('Purchase Order created successfully');
+                    reset();
+                },
+                onError: (errors) => {
+                    console.error('Validation errors:', errors);
+                },
             },
-        });
+        );
     };
 
     // Get available articles for selected brand, filtered by article type if selected
@@ -232,21 +231,19 @@ export default function Create({ brands, articleTypes }: Props) {
         if (!selectedBrandId) return [];
         let filtered = articles;
         if (articleTypeId) {
-            filtered = articles.filter(a => a.article_type_id.toString() === articleTypeId);
+            filtered = articles.filter((a) => a.article_type_id.toString() === articleTypeId);
         }
         return filtered;
     };
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Create Purchase Order" />
+            <Head title="Add Purchase Order" />
 
             <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
                 <div>
-                    <h1 className="text-2xl font-semibold">Create Purchase Order</h1>
-                    <p className="text-sm text-neutral-600 dark:text-neutral-400">
-                        Add a new purchase order
-                    </p>
+                    <h1 className="text-2xl font-semibold">Add Purchase Order</h1>
+                    <p className="text-sm text-neutral-600 dark:text-neutral-400">Add a new purchase order</p>
                 </div>
 
                 <form onSubmit={submit} className="space-y-6">
@@ -255,15 +252,10 @@ export default function Create({ brands, articleTypes }: Props) {
                             <CardTitle>Order Details</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                            <div className="grid gap-4 md:grid-cols-2">
+                            <div className="grid gap-4 pb-4 md:grid-cols-2">
                                 <div className="grid gap-2">
                                     <Label htmlFor="po_number">PO Number *</Label>
-                                    <Input
-                                        id="po_number"
-                                        value={data.po_number}
-                                        onChange={(e) => setData('po_number', e.target.value)}
-                                        required
-                                    />
+                                    <Input id="po_number" value={data.po_number} onChange={(e) => setData('po_number', e.target.value)} required />
                                     <InputError message={errors.po_number} />
                                 </div>
 
@@ -288,13 +280,15 @@ export default function Create({ brands, articleTypes }: Props) {
                                             setData('brand_id', value);
                                             setSelectedBrandId(value);
                                             // Clear article sections when brand changes
-                                            setArticleSections([{
-                                                article_type_id: '',
-                                                article_style: '',
-                                                article_description: '',
-                                                article_color: '',
-                                                order_quantity: '',
-                                            }]);
+                                            setArticleSections([
+                                                {
+                                                    article_type_id: '',
+                                                    article_style: '',
+                                                    article_description: '',
+                                                    article_color: '',
+                                                    order_quantity: '',
+                                                },
+                                            ]);
                                         }}
                                         required
                                     >
@@ -314,12 +308,7 @@ export default function Create({ brands, articleTypes }: Props) {
 
                                 <div className="grid gap-2">
                                     <Label htmlFor="country">Country *</Label>
-                                    <Input
-                                        id="country"
-                                        value={data.country}
-                                        onChange={(e) => setData('country', e.target.value)}
-                                        required
-                                    />
+                                    <Input id="country" value={data.country} onChange={(e) => setData('country', e.target.value)} required />
                                     <InputError message={errors.country} />
                                 </div>
                             </div>
@@ -330,29 +319,19 @@ export default function Create({ brands, articleTypes }: Props) {
                         <CardHeader>
                             <div className="flex items-center justify-between">
                                 <CardTitle>Article Details *</CardTitle>
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={addArticleSection}
-                                >
-                                    <Plus className="h-4 w-4 mr-2" />
+                                <Button type="button" variant="outline" size="sm" onClick={addArticleSection}>
+                                    <Plus className="mr-2 h-4 w-4" />
                                     Add More
                                 </Button>
                             </div>
                         </CardHeader>
                         <CardContent className="space-y-4">
                             {articleSections.map((article, index) => (
-                                <div key={index} className="grid gap-4 border-b border-neutral-200 dark:border-neutral-700 pb-4">
+                                <div key={index} className="grid gap-4 pb-4">
                                     <div className="flex items-center justify-between">
                                         <h4 className="font-medium">Article {index + 1}</h4>
                                         {articleSections.length > 1 && (
-                                            <Button
-                                                type="button"
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={() => removeArticleSection(index)}
-                                            >
+                                            <Button type="button" variant="outline" size="sm" onClick={() => removeArticleSection(index)}>
                                                 <Trash2 className="h-4 w-4" />
                                             </Button>
                                         )}
@@ -388,7 +367,7 @@ export default function Create({ brands, articleTypes }: Props) {
                                                 disabled={!selectedBrandId}
                                             >
                                                 <SelectTrigger>
-                                                    <SelectValue placeholder={selectedBrandId ? "Select article style" : "Select brand first"} />
+                                                    <SelectValue placeholder={selectedBrandId ? 'Select article style' : 'Select brand first'} />
                                                 </SelectTrigger>
                                                 <SelectContent>
                                                     {getAvailableArticles(article.article_type_id).map((art) => (
@@ -400,20 +379,6 @@ export default function Create({ brands, articleTypes }: Props) {
                                             </Select>
                                             <InputError message={errors[`articles.${index}.article_style` as keyof typeof errors]} />
                                         </div>
-
-                                        <div className="grid gap-2 md:col-span-2">
-                                            <Label htmlFor={`article_description_${index}`}>Article Description</Label>
-                                            <textarea
-                                                id={`article_description_${index}`}
-                                                value={article.article_description}
-                                                onChange={(e) => updateArticleSection(index, 'article_description', e.target.value)}
-                                                rows={3}
-                                                className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                                                readOnly
-                                            />
-                                            <InputError message={errors[`articles.${index}.article_description` as keyof typeof errors]} />
-                                        </div>
-
                                         <div className="grid gap-2">
                                             <Label htmlFor={`article_color_${index}`}>Article Color</Label>
                                             <Input
@@ -436,12 +401,23 @@ export default function Create({ brands, articleTypes }: Props) {
                                             />
                                             <InputError message={errors[`articles.${index}.order_quantity` as keyof typeof errors]} />
                                         </div>
+
+                                        <div className="grid gap-2 md:col-span-2">
+                                            <Label htmlFor={`article_description_${index}`}>Article Description</Label>
+                                            <textarea
+                                                id={`article_description_${index}`}
+                                                value={article.article_description}
+                                                onChange={(e) => updateArticleSection(index, 'article_description', e.target.value)}
+                                                rows={3}
+                                                className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                                                readOnly
+                                            />
+                                            <InputError message={errors[`articles.${index}.article_description` as keyof typeof errors]} />
+                                        </div>
                                     </div>
                                 </div>
                             ))}
-                            {errors.articles && typeof errors.articles === 'string' && (
-                                <InputError message={errors.articles} />
-                            )}
+                            {errors.articles && typeof errors.articles === 'string' && <InputError message={errors.articles} />}
                         </CardContent>
                     </Card>
 
@@ -449,29 +425,19 @@ export default function Create({ brands, articleTypes }: Props) {
                         <CardHeader>
                             <div className="flex items-center justify-between">
                                 <CardTitle>Client Reference Details *</CardTitle>
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={addClientReferenceSection}
-                                >
-                                    <Plus className="h-4 w-4 mr-2" />
+                                <Button type="button" variant="outline" size="sm" onClick={addClientReferenceSection}>
+                                    <Plus className="mr-2 h-4 w-4" />
                                     Add More
                                 </Button>
                             </div>
                         </CardHeader>
                         <CardContent className="space-y-4">
                             {clientReferenceSections.map((ref, index) => (
-                                <div key={index} className="grid gap-4 border-b border-neutral-200 dark:border-neutral-700 pb-4">
+                                <div key={index} className="grid gap-4 pb-4">
                                     <div className="flex items-center justify-between">
                                         <h4 className="font-medium">Client Reference {index + 1}</h4>
                                         {clientReferenceSections.length > 1 && (
-                                            <Button
-                                                type="button"
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={() => removeClientReferenceSection(index)}
-                                            >
+                                            <Button type="button" variant="outline" size="sm" onClick={() => removeClientReferenceSection(index)}>
                                                 <Trash2 className="h-4 w-4" />
                                             </Button>
                                         )}
@@ -506,7 +472,9 @@ export default function Create({ brands, articleTypes }: Props) {
                                                 value={ref.reference_email_address}
                                                 onChange={(e) => updateClientReferenceSection(index, 'reference_email_address', e.target.value)}
                                             />
-                                            <InputError message={errors[`client_references.${index}.reference_email_address` as keyof typeof errors]} />
+                                            <InputError
+                                                message={errors[`client_references.${index}.reference_email_address` as keyof typeof errors]}
+                                            />
                                         </div>
 
                                         <div className="grid gap-2">
@@ -541,14 +509,10 @@ export default function Create({ brands, articleTypes }: Props) {
 
                     <div className="flex items-center gap-4">
                         <Button type="submit" disabled={processing}>
-                            {processing ? 'Creating...' : 'Create Purchase Order'}
+                            {processing ? 'Creating...' : 'Add Purchase Order'}
                         </Button>
-                        <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => router.visit(purchaseOrderRoutes.index().url)}
-                        >
-                            <ArrowLeft className="h-4 w-4 mr-2" />
+                        <Button type="button" variant="outline" onClick={() => router.visit(purchaseOrderRoutes.index().url)}>
+                            <ArrowLeft className="mr-2 h-4 w-4" />
                             Cancel
                         </Button>
                     </div>
@@ -557,4 +521,3 @@ export default function Create({ brands, articleTypes }: Props) {
         </AppLayout>
     );
 }
-
