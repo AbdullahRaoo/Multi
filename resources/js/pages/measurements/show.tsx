@@ -109,7 +109,7 @@ export default function Show({ brand, article, measurement }: Props) {
                         <CardTitle>Measurement Information</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="grid gap-4 md:grid-cols-2">
+                        <div className="grid gap-4 md:grid-cols-5">
                             <div>
                                 <p className="text-sm font-medium text-neutral-600 dark:text-neutral-400">
                                     Article
@@ -146,22 +146,6 @@ export default function Show({ brand, article, measurement }: Props) {
                                     {measurement.tol_minus !== null ? measurement.tol_minus : (
                                         <span className="text-neutral-400">Not specified</span>
                                     )}
-                                </p>
-                            </div>
-                            <div>
-                                <p className="text-sm font-medium text-neutral-600 dark:text-neutral-400">
-                                    Created At
-                                </p>
-                                <p className="text-base">
-                                    {new Date(measurement.created_at).toLocaleString()}
-                                </p>
-                            </div>
-                            <div>
-                                <p className="text-sm font-medium text-neutral-600 dark:text-neutral-400">
-                                    Updated At
-                                </p>
-                                <p className="text-base">
-                                    {new Date(measurement.updated_at).toLocaleString()}
                                 </p>
                             </div>
                         </div>

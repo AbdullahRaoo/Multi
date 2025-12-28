@@ -17,7 +17,7 @@ const breadcrumbs: BreadcrumbItem[] = [
         href: operatorRoutes.index().url,
     },
     {
-        title: 'Create Operator',
+        title: 'Add Operator',
         href: operatorRoutes.create().url,
     },
 ];
@@ -48,13 +48,13 @@ export default function Create({}: Props) {
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Create Operator" />
+            <Head title="Add New Operator" />
 
             <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
                 <div>
-                    <h1 className="text-2xl font-semibold">Create Operator</h1>
+                    <h1 className="text-2xl font-semibold">Add New Operator</h1>
                     <p className="text-sm text-neutral-600 dark:text-neutral-400">
-                        Fill in the details to create a new operator
+                        Fill in the details to add a new operator
                     </p>
                 </div>
 
@@ -107,7 +107,7 @@ export default function Create({}: Props) {
 
                     <div className="flex items-center gap-4">
                         <Button type="submit" disabled={processing}>
-                            {processing ? 'Creating...' : 'Create Operator'}
+                            {processing ? 'Creating...' : 'Add Operator'}
                         </Button>
                         <Button
                             type="button"

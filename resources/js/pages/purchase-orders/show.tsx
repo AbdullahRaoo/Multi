@@ -105,7 +105,7 @@ export default function Show({ purchaseOrder }: Props) {
                         <CardTitle>Order Details</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="grid gap-4 md:grid-cols-2">
+                        <div className="grid gap-4 md:grid-cols-5">
                             <div>
                                 <p className="text-sm font-medium text-neutral-600 dark:text-neutral-400">
                                     PO Number
@@ -131,22 +131,6 @@ export default function Show({ purchaseOrder }: Props) {
                                     Country
                                 </p>
                                 <p className="text-base">{purchaseOrder.country}</p>
-                            </div>
-                            <div>
-                                <p className="text-sm font-medium text-neutral-600 dark:text-neutral-400">
-                                    Created At
-                                </p>
-                                <p className="text-base">
-                                    {new Date(purchaseOrder.created_at).toLocaleString()}
-                                </p>
-                            </div>
-                            <div>
-                                <p className="text-sm font-medium text-neutral-600 dark:text-neutral-400">
-                                    Updated At
-                                </p>
-                                <p className="text-base">
-                                    {new Date(purchaseOrder.updated_at).toLocaleString()}
-                                </p>
                             </div>
                         </div>
                     </CardContent>
