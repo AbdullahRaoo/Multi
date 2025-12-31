@@ -65,6 +65,7 @@ class PurchaseOrderController extends Controller
             'date' => ['required', 'date'],
             'brand_id' => ['required', 'integer', 'exists:brands,id'],
             'country' => ['required', 'string', 'max:255'],
+            'status' => ['required', 'string', 'in:Active,Pending,Completed'],
             'articles' => ['required', 'array', 'min:1'],
             'articles.*.article_type_id' => ['required', 'integer', 'exists:article_types,id'],
             'articles.*.article_style' => ['required', 'string', 'max:255'],
@@ -85,6 +86,8 @@ class PurchaseOrderController extends Controller
             'brand_id.required' => 'Brand is required.',
             'brand_id.exists' => 'Selected brand is invalid.',
             'country.required' => 'Country is required.',
+            'status.required' => 'Status is required.',
+            'status.in' => 'Status must be Active, Pending, or Completed.',
             'articles.required' => 'At least one article is required.',
             'articles.min' => 'At least one article is required.',
             'articles.*.article_type_id.required' => 'Article type is required for all articles.',
@@ -102,6 +105,7 @@ class PurchaseOrderController extends Controller
             'date' => $validated['date'],
             'brand_id' => $validated['brand_id'],
             'country' => $validated['country'],
+            'status' => $validated['status'],
         ]);
 
         // Create articles
@@ -168,6 +172,7 @@ class PurchaseOrderController extends Controller
             'date' => ['required', 'date'],
             'brand_id' => ['required', 'integer', 'exists:brands,id'],
             'country' => ['required', 'string', 'max:255'],
+            'status' => ['required', 'string', 'in:Active,Pending,Completed'],
             'articles' => ['required', 'array', 'min:1'],
             'articles.*.article_type_id' => ['required', 'integer', 'exists:article_types,id'],
             'articles.*.article_style' => ['required', 'string', 'max:255'],
@@ -188,6 +193,8 @@ class PurchaseOrderController extends Controller
             'brand_id.required' => 'Brand is required.',
             'brand_id.exists' => 'Selected brand is invalid.',
             'country.required' => 'Country is required.',
+            'status.required' => 'Status is required.',
+            'status.in' => 'Status must be Active, Pending, or Completed.',
             'articles.required' => 'At least one article is required.',
             'articles.min' => 'At least one article is required.',
             'articles.*.article_type_id.required' => 'Article type is required for all articles.',
@@ -205,6 +212,7 @@ class PurchaseOrderController extends Controller
             'date' => $validated['date'],
             'brand_id' => $validated['brand_id'],
             'country' => $validated['country'],
+            'status' => $validated['status'],
         ]);
 
         // Delete existing articles and create new ones

@@ -17,6 +17,7 @@ return new class extends Migration
             $table->date('date');
             $table->foreignId('brand_id')->constrained()->onDelete('restrict');
             $table->string('country');
+            $table->enum('status', ['Active', 'Pending', 'Completed'])->default('Pending');
             $table->timestamps();
         });
     }

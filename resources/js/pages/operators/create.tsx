@@ -9,8 +9,6 @@ import operatorRoutes from '@/routes/operators';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router, useForm } from '@inertiajs/react';
 
-interface Props {}
-
 const breadcrumbs: BreadcrumbItem[] = [
     {
         title: 'Operators',
@@ -22,10 +20,11 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
-export default function Create({}: Props) {
+export default function Create() {
     const { data, setData, post, processing, errors, reset } = useForm({
         full_name: '',
         employee_id: '',
+        department: '',
         login_pin: '',
     });
 
@@ -84,6 +83,16 @@ export default function Create({}: Props) {
                                     required
                                 />
                                 <InputError message={errors.employee_id} />
+                            </div>
+
+                            <div className="grid gap-2">
+                                <Label htmlFor="department">Department</Label>
+                                <Input
+                                    id="department"
+                                    value={data.department}
+                                    onChange={(e) => setData('department', e.target.value)}
+                                />
+                                <InputError message={errors.department} />
                             </div>
 
                             <div className="grid gap-2">

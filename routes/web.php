@@ -19,9 +19,15 @@ Route::get('/_boost/browser-logs', function () {
 Route::middleware(['auth'])->group(function () {
     Route::get('dashboard', function () {
         $totalPurchaseOrders = \App\Models\PurchaseOrder::count();
+        $activePurchaseOrders = \App\Models\PurchaseOrder::where('status', 'Active')->count();
+        $pendingPurchaseOrders = \App\Models\PurchaseOrder::where('status', 'Pending')->count();
+        $completedPurchaseOrders = \App\Models\PurchaseOrder::where('status', 'Completed')->count();
         
         return Inertia::render('dashboard', [
             'totalPurchaseOrders' => $totalPurchaseOrders,
+            'activePurchaseOrders' => $activePurchaseOrders,
+            'pendingPurchaseOrders' => $pendingPurchaseOrders,
+            'completedPurchaseOrders' => $completedPurchaseOrders,
         ]);
     })->name('dashboard');
 

@@ -24,7 +24,7 @@ A modern, full-stack web application built with Laravel 12 and React, featuring 
 
 ## 🎯 Overview
 
-MagicQC is a Laravel 12 application built on the Laravel React Starter Kit. It provides a modern, single-page application experience with server-side rendering capabilities using Inertia.js. The application uses WorkOS for authentication and features a beautiful, responsive UI built with React, TypeScript, and Tailwind CSS.
+MagicQC is a Laravel 12 application built on the Laravel React Starter Kit. It provides a modern, single-page application experience with server-side rendering capabilities using Inertia.js. The application uses Laravel's built-in authentication and features a beautiful, responsive UI built with React, TypeScript, and Tailwind CSS.
 
 ### Key Characteristics
 
@@ -33,7 +33,7 @@ MagicQC is a Laravel 12 application built on the Laravel React Starter Kit. It p
 - **Type-Safe Routes**: Wayfinder generates type-safe route helpers
 - **Modern UI**: Built with Radix UI and Tailwind CSS 4
 - **SSR Support**: Server-side rendering configured and ready
-- **Authentication**: WorkOS integration for secure user management
+- **Authentication**: Laravel's built-in authentication system
 
 ## 🛠 Technology Stack
 
@@ -42,7 +42,7 @@ MagicQC is a Laravel 12 application built on the Laravel React Starter Kit. It p
 - **Laravel 12**: PHP framework
 - **PHP 8.2+**: Programming language
 - **SQLite**: Default database (easily switchable)
-- **WorkOS**: Authentication and user management
+- **Laravel Authentication**: Built-in session-based authentication
 - **Inertia.js**: Server-side adapter for Laravel
 
 ### Frontend
@@ -67,11 +67,13 @@ MagicQC is a Laravel 12 application built on the Laravel React Starter Kit. It p
 
 ### Authentication & User Management
 
-- ✅ WorkOS-powered authentication
+- ✅ Laravel's built-in authentication
 - ✅ Secure login/logout flow
-- ✅ Session validation middleware
+- ✅ User registration
+- ✅ Session-based authentication
 - ✅ User profile management
-- ✅ Account deletion with WorkOS integration
+- ✅ Password change functionality
+- ✅ Account deletion with password confirmation
 - ✅ Avatar support
 
 ### Theme System
@@ -207,8 +209,9 @@ APP_URL=http://localhost:8000
 DB_CONNECTION=sqlite
 # DB_DATABASE=database.sqlite (default)
 
-# No additional authentication configuration needed
+# Authentication
 # Laravel's built-in authentication is used
+# No additional configuration needed
 ```
 
 ### Step 4: Database Setup
@@ -351,22 +354,22 @@ The `HandleInertiaRequests` middleware shares data to all pages:
 
 ## 🔐 Authentication
 
-### WorkOS Integration
+### Laravel Authentication
 
-The application uses WorkOS for authentication:
+The application uses Laravel's built-in authentication system:
 
-1. **Login**: Redirects to WorkOS login page
-2. **Callback**: `/authenticate` route handles OAuth callback
-3. **Session**: WorkOS validates session on each request
-4. **Logout**: WorkOS logout with account cleanup
+1. **Registration**: Users can create accounts with email and password
+2. **Login**: Email and password authentication
+3. **Session**: Laravel manages sessions automatically
+4. **Logout**: Session invalidation and cleanup
 
 ### Authentication Flow
 
 ```
-1. User clicks "Login" → Redirects to WorkOS
-2. User authenticates with WorkOS
-3. WorkOS redirects to /authenticate
-4. Laravel creates/updates user with workos_id
+1. User visits /register or /login
+2. User enters credentials (email/password)
+3. Laravel validates and authenticates
+4. Session is created
 5. User redirected to dashboard
 ```
 
@@ -375,10 +378,7 @@ The application uses WorkOS for authentication:
 Routes protected with authentication middleware:
 
 ```php
-Route::middleware([
-    'auth',
-    ValidateSessionWithWorkOS::class,
-])->group(function () {
+Route::middleware(['auth'])->group(function () {
     // Protected routes
 });
 ```
@@ -387,10 +387,10 @@ Route::middleware([
 
 The `User` model includes:
 
-- `workos_id`: Unique WorkOS identifier
 - `name`: User's display name
 - `email`: User's email address
-- `avatar`: User's avatar URL
+- `password`: Hashed password
+- `avatar`: User's avatar URL (optional)
 
 ## 🎨 Theme System
 
@@ -432,8 +432,10 @@ Theme management is handled by:
 #### Public Routes
 
 - `GET /` - Welcome page
-- `GET /login` - Login page (redirects to WorkOS)
-- `GET /authenticate` - OAuth callback
+- `GET /login` - Login page
+- `POST /login` - Handle login
+- `GET /register` - Registration page
+- `POST /register` - Handle registration
 
 #### Protected Routes
 
@@ -475,8 +477,8 @@ users
 ├── name (string)
 ├── email (string, unique)
 ├── email_verified_at (timestamp, nullable)
-├── workos_id (string, unique)
-├── avatar (text)
+├── password (string, hashed)
+├── avatar (text, nullable)
 ├── remember_token (string, nullable)
 ├── created_at (timestamp)
 └── updated_at (timestamp)
@@ -546,7 +548,7 @@ Located at `app/Http/Controllers/Settings/ProfileController.php`:
 
 - `edit()`: Display profile settings page
 - `update()`: Update user profile (name)
-- `destroy()`: Delete user account (with WorkOS integration)
+- `destroy()`: Delete user account (requires password confirmation)
 
 ### Middleware
 
@@ -567,8 +569,8 @@ Reads appearance cookie and shares to Blade template for SSR.
 
 #### User Model
 
-- Mass assignable: `name`, `email`, `workos_id`, `avatar`
-- Hidden: `workos_id`, `remember_token`
+- Mass assignable: `name`, `email`, `password`, `avatar`
+- Hidden: `password`, `remember_token`
 - Casts: `email_verified_at` (datetime), `password` (hashed)
 
 ## 📄 Key Files

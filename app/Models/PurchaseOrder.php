@@ -16,6 +16,7 @@ class PurchaseOrder extends Model
         'date',
         'brand_id',
         'country',
+        'status',
     ];
 
     protected $casts = [

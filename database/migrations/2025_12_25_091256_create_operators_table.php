@@ -15,6 +15,7 @@ return new class extends Migration
             $table->id();
             $table->string('full_name');
             $table->string('employee_id')->unique();
+            $table->string('department')->nullable();
             $table->string('login_pin');
             $table->timestamps();
         });

@@ -20,6 +20,7 @@ interface Operator {
     id: number;
     full_name: string;
     employee_id: string;
+    department: string | null;
     created_at: string;
     updated_at: string;
 }
@@ -76,6 +77,7 @@ export default function Index({ operators }: Props) {
                             <TableRow>
                                 <TableHead>Full Name</TableHead>
                                 <TableHead>Employee ID</TableHead>
+                                <TableHead>Department</TableHead>
                                 <TableHead>Created At</TableHead>
                                 <TableHead>Updated At</TableHead>
                                 <TableHead className="text-right">Actions</TableHead>
@@ -84,7 +86,7 @@ export default function Index({ operators }: Props) {
                         <TableBody>
                             {operators.data.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={5} className="text-center text-neutral-500">
+                                    <TableCell colSpan={6} className="text-center text-neutral-500">
                                         No operators found. Create your first one!
                                     </TableCell>
                                 </TableRow>
@@ -93,6 +95,7 @@ export default function Index({ operators }: Props) {
                                     <TableRow key={operator.id}>
                                         <TableCell className="font-medium">{operator.full_name}</TableCell>
                                         <TableCell>{operator.employee_id}</TableCell>
+                                        <TableCell>{operator.department || 'N/A'}</TableCell>
                                         <TableCell>
                                             {new Date(operator.created_at).toLocaleDateString()}
                                         </TableCell>

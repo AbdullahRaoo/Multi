@@ -7,6 +7,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { DeleteConfirmationDialog } from '@/components/delete-confirmation-dialog';
 import AppLayout from '@/layouts/app-layout';
@@ -27,6 +28,7 @@ interface PurchaseOrder {
     po_number: string;
     date: string;
     country: string;
+    status: string;
     brand: Brand;
     created_at: string;
     updated_at: string;
@@ -61,6 +63,32 @@ export default function Index({ purchaseOrders, filters }: Props) {
     const handleDeleteConfirm = () => {
         if (purchaseOrderToDelete) {
             router.delete(purchaseOrderRoutes.destroy({ purchase_order: purchaseOrderToDelete.id }).url);
+        }
+    };
+
+    const getStatusBadgeVariant = (status: string): 'default' | 'secondary' | 'outline' => {
+        switch (status) {
+            case 'Active':
+                return 'default';
+            case 'Pending':
+                return 'secondary';
+            case 'Completed':
+                return 'outline';
+            default:
+                return 'outline';
+        }
+    };
+
+    const getStatusBadgeClassName = (status: string) => {
+        switch (status) {
+            case 'Active':
+                return 'bg-green-100 text-green-800 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800';
+            case 'Pending':
+                return 'bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-800';
+            case 'Completed':
+                return 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800';
+            default:
+                return '';
         }
     };
 
@@ -126,6 +154,7 @@ export default function Index({ purchaseOrders, filters }: Props) {
                                 <TableHead>Date</TableHead>
                                 <TableHead>Brand</TableHead>
                                 <TableHead>Country</TableHead>
+                                <TableHead>Status</TableHead>
                                 <TableHead>Created At</TableHead>
                                 <TableHead>Updated At</TableHead>
                                 <TableHead className="text-right">Actions</TableHead>
@@ -134,7 +163,7 @@ export default function Index({ purchaseOrders, filters }: Props) {
                         <TableBody>
                             {purchaseOrders.data.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={7} className="text-center text-neutral-500">
+                                    <TableCell colSpan={8} className="text-center text-neutral-500">
                                         No purchase orders found. Create your first one!
                                     </TableCell>
                                 </TableRow>
@@ -153,6 +182,14 @@ export default function Index({ purchaseOrders, filters }: Props) {
                                         </TableCell>
                                         <TableCell>{po.brand?.name || 'N/A'}</TableCell>
                                         <TableCell>{po.country}</TableCell>
+                                        <TableCell>
+                                            <Badge
+                                                variant={getStatusBadgeVariant(po.status)}
+                                                className={getStatusBadgeClassName(po.status)}
+                                            >
+                                                {po.status || 'Pending'}
+                                            </Badge>
+                                        </TableCell>
                                         <TableCell>
                                             {new Date(po.created_at).toLocaleDateString()}
                                         </TableCell>

@@ -13,6 +13,7 @@ interface Operator {
     id: number;
     full_name: string;
     employee_id: string;
+    department: string | null;
     created_at: string;
     updated_at: string;
 }
@@ -25,6 +26,7 @@ export default function Edit({ operator }: Props) {
     const { data, setData, put, processing, errors } = useForm({
         full_name: operator.full_name,
         employee_id: operator.employee_id,
+        department: operator.department || '',
         login_pin: '',
     });
 
@@ -84,6 +86,16 @@ export default function Edit({ operator }: Props) {
                                     required
                                 />
                                 <InputError message={errors.employee_id} />
+                            </div>
+
+                            <div className="grid gap-2">
+                                <Label htmlFor="department">Department</Label>
+                                <Input
+                                    id="department"
+                                    value={data.department}
+                                    onChange={(e) => setData('department', e.target.value)}
+                                />
+                                <InputError message={errors.department} />
                             </div>
 
                             <div className="grid gap-2">

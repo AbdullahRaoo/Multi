@@ -12,6 +12,7 @@ class Operator extends Model
     protected $fillable = [
         'full_name',
         'employee_id',
+        'department',
         'login_pin',
     ];
 

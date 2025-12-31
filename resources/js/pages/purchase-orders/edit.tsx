@@ -62,6 +62,7 @@ interface PurchaseOrder {
     date: string;
     brand_id: number;
     country: string;
+    status: string;
     brand: Brand;
     articles: PurchaseOrderArticle[];
     client_references: PurchaseOrderClientReference[];
@@ -150,6 +151,7 @@ export default function Edit({ purchaseOrder, brands, articleTypes }: Props) {
         date: purchaseOrder.date,
         brand_id: purchaseOrder.brand_id.toString(),
         country: purchaseOrder.country,
+        status: purchaseOrder.status || 'Pending',
         articles: articleSections,
         client_references: clientReferenceSections,
     });
@@ -264,6 +266,7 @@ export default function Edit({ purchaseOrder, brands, articleTypes }: Props) {
             date: data.date,
             brand_id: parseInt(data.brand_id as string) || 0,
             country: data.country,
+            status: data.status,
             articles: transformedArticles,
             client_references: transformedClientReferences,
         }, {
@@ -357,6 +360,25 @@ export default function Edit({ purchaseOrder, brands, articleTypes }: Props) {
                                         required
                                     />
                                     <InputError message={errors.country} />
+                                </div>
+
+                                <div className="grid gap-2">
+                                    <Label htmlFor="status">Status *</Label>
+                                    <Select
+                                        value={data.status as string}
+                                        onValueChange={(value) => setData('status', value)}
+                                        required
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Select status" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="Active">Active</SelectItem>
+                                            <SelectItem value="Pending">Pending</SelectItem>
+                                            <SelectItem value="Completed">Completed</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                    <InputError message={errors.status} />
                                 </div>
                             </div>
                         </CardContent>

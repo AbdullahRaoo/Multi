@@ -15,16 +15,22 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         // Create admin user
-        User::create([
-            'name' => 'Admin',
-            'email' => 'admin@gmail.com',
-            'password' => Hash::make('password'),
-            'email_verified_at' => now(),
-        ]);
+        User::firstOrCreate(
+            ['email' => 'admin@gmail.com'],
+            [
+                'name' => 'Admin',
+                'password' => Hash::make('password'),
+                'email_verified_at' => now(),
+            ]
+        );
 
         // Seed article types
         $this->call([
             ArticleTypeSeeder::class,
+            BrandSeeder::class,
+            ArticleSeeder::class,
+            MeasurementSeeder::class,
+            PurchaseOrderSeeder::class,
         ]);
 
         // Uncomment to create additional test users
