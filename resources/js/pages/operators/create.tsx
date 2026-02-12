@@ -25,6 +25,7 @@ export default function Create() {
         full_name: '',
         employee_id: '',
         department: '',
+        contact_number: '',
         login_pin: '',
     });
 
@@ -93,6 +94,17 @@ export default function Create() {
                                     onChange={(e) => setData('department', e.target.value)}
                                 />
                                 <InputError message={errors.department} />
+                            </div>
+
+                            <div className="grid gap-2">
+                                <Label htmlFor="contact_number">Contact Number</Label>
+                                <Input
+                                    id="contact_number"
+                                    value={data.contact_number}
+                                    onChange={(e) => setData('contact_number', e.target.value)}
+                                    placeholder="e.g. +1234567890"
+                                />
+                                <InputError message={errors.contact_number} />
                             </div>
 
                             <div className="grid gap-2">

@@ -30,7 +30,6 @@ interface Props {
 interface SizeSection {
     size: string;
     value: string;
-    unit: string;
 }
 
 export default function Create({ brand, article }: Props) {
@@ -61,18 +60,37 @@ export default function Create({ brand, article }: Props) {
         },
     ];
 
-    const [sizes, setSizes] = useState<SizeSection[]>([{ size: '', value: '', unit: 'cm' }]);
+    const [sizes, setSizes] = useState<SizeSection[]>([{ size: '', value: '' }]);
 
     const { data, setData, post, processing, errors, reset } = useForm({
         code: '',
         measurement: '',
+        unit: 'cm',
         tol_plus: '',
         tol_minus: '',
         sizes: sizes,
     });
 
+    // Utility function to convert fraction string to decimal
+    const fractionToDecimal = (input: string): number | null => {
+        if (!input || input.trim() === '') return null;
+
+        // Check if input is a fraction (e.g., "1/2", "3/8")
+        const fractionMatch = input.trim().match(/^(\d+)\/(\d+)$/);
+        if (fractionMatch) {
+            const numerator = parseInt(fractionMatch[1]);
+            const denominator = parseInt(fractionMatch[2]);
+            if (denominator === 0) return null;
+            return numerator / denominator;
+        }
+
+        // Otherwise try to parse as decimal
+        const decimal = parseFloat(input);
+        return isNaN(decimal) ? null : decimal;
+    };
+
     const addSizeSection = () => {
-        setSizes([...sizes, { size: '', value: '', unit: 'cm' }]);
+        setSizes([...sizes, { size: '', value: '' }]);
     };
 
     const removeSizeSection = (index: number) => {
@@ -97,23 +115,35 @@ export default function Create({ brand, article }: Props) {
         const transformedSizes = sizes.map((size) => ({
             size: size.size,
             value: parseFloat(size.value) || 0,
-            unit: size.unit,
+            unit: data.unit,
         }));
+
+        // Convert tolerance values (handle fractions if inches selected)
+        const tolPlusValue = fractionToDecimal(data.tol_plus as string);
+        const tolMinusValue = fractionToDecimal(data.tol_minus as string);
 
         const formData = {
             code: data.code,
             measurement: data.measurement,
-            tol_plus: data.tol_plus ? parseFloat(data.tol_plus as string) : null,
-            tol_minus: data.tol_minus ? parseFloat(data.tol_minus as string) : null,
+            tol_plus: tolPlusValue,
+            tol_minus: tolMinusValue,
             sizes: transformedSizes,
         };
 
-        post(store({ brand: brand.id, article: article.id }).url, {
-            data: formData,
+        router.post(store({ brand: brand.id, article: article.id }).url, formData, {
             preserveScroll: true,
             onSuccess: () => {
                 console.log('Measurement created successfully');
-                reset();
+                // Reset form
+                setData({
+                    code: '',
+                    measurement: '',
+                    unit: 'cm',
+                    tol_plus: '',
+                    tol_minus: '',
+                    sizes: [{ size: '', value: '' }],
+                });
+                setSizes([{ size: '', value: '' }]);
             },
             onError: (errors) => {
                 console.error('Validation errors:', errors);
@@ -136,8 +166,9 @@ export default function Create({ brand, article }: Props) {
                         <CardHeader>
                             <CardTitle>Measurement Details</CardTitle>
                         </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="grid gap-4 md:grid-cols-4">
+                        <CardContent className="space-y-6">
+                            {/* Code and Measurement */}
+                            <div className="grid gap-4 md:grid-cols-2">
                                 <div className="grid gap-2">
                                     <Label htmlFor="code">Code *</Label>
                                     <Input id="code" value={data.code} onChange={(e) => setData('code', e.target.value)} required />
@@ -154,103 +185,112 @@ export default function Create({ brand, article }: Props) {
                                     />
                                     <InputError message={errors.measurement} />
                                 </div>
+                            </div>
+
+                            {/* Unit Selector */}
+                            <div className="grid gap-2">
+                                <Label htmlFor="unit">Unit *</Label>
+                                <Select value={data.unit} onValueChange={(value) => setData('unit', value)} required>
+                                    <SelectTrigger className="md:w-1/2">
+                                        <SelectValue placeholder="Select unit" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="cm">cm</SelectItem>
+                                        <SelectItem value="inches">inches</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                <InputError message={errors.unit} />
+                            </div>
+
+                            {/* Tolerance Fields */}
+                            <div className="grid gap-4 md:grid-cols-2">
                                 <div className="grid gap-2">
-                                    <Label htmlFor="tol_plus">Tol (+)</Label>
+                                    <Label htmlFor="tol_plus">
+                                        Tol (+) {data.unit === 'inches' && <span className="text-xs text-muted-foreground">(e.g., 1/2 or 0.5)</span>}
+                                    </Label>
                                     <Input
                                         id="tol_plus"
-                                        type="number"
-                                        step="0.01"
+                                        type="text"
                                         value={data.tol_plus}
                                         onChange={(e) => setData('tol_plus', e.target.value)}
+                                        placeholder={data.unit === 'inches' ? 'e.g., 1/2 or 0.5' : 'e.g., 0.5'}
                                     />
                                     <InputError message={errors.tol_plus} />
                                 </div>
 
                                 <div className="grid gap-2">
-                                    <Label htmlFor="tol_minus">Tol (-)</Label>
+                                    <Label htmlFor="tol_minus">
+                                        Tol (-) {data.unit === 'inches' && <span className="text-xs text-muted-foreground">(e.g., 1/4 or 0.25)</span>}
+                                    </Label>
                                     <Input
                                         id="tol_minus"
-                                        type="number"
-                                        step="0.01"
+                                        type="text"
                                         value={data.tol_minus}
                                         onChange={(e) => setData('tol_minus', e.target.value)}
+                                        placeholder={data.unit === 'inches' ? 'e.g., 1/4 or 0.25' : 'e.g., 0.25'}
                                     />
                                     <InputError message={errors.tol_minus} />
                                 </div>
                             </div>
-                        </CardContent>
-                    </Card>
 
-                    <Card>
-                        <CardHeader>
-                            <div className="flex items-center justify-between">
-                                <CardTitle>Size Section *</CardTitle>
-                                <Button type="button" variant="outline" size="sm" onClick={addSizeSection}>
-                                    <Plus className="mr-2 h-4 w-4" />
-                                    Add More
-                                </Button>
-                            </div>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            {sizes.map((size, index) => (
-                                <div
-                                    key={index}
-                                    className="grid items-end gap-4 pb-4 md:grid-cols-4"
-                                >
-                                    <div className="grid gap-2">
-                                        <Label htmlFor={`size-${index}`}>Size *</Label>
-                                        <Input
-                                            id={`size-${index}`}
-                                            value={size.size}
-                                            onChange={(e) => updateSizeSection(index, 'size', e.target.value)}
-                                            required
-                                        />
-                                        <InputError message={errors[`sizes.${index}.size` as keyof typeof errors]} />
-                                    </div>
-
-                                    <div className="grid gap-2">
-                                        <Label htmlFor={`value-${index}`}>Value *</Label>
-                                        <Input
-                                            id={`value-${index}`}
-                                            type="number"
-                                            step="0.01"
-                                            value={size.value}
-                                            onChange={(e) => updateSizeSection(index, 'value', e.target.value)}
-                                            required
-                                        />
-                                        <InputError message={errors[`sizes.${index}.value` as keyof typeof errors]} />
-                                    </div>
-
-                                    <div className="grid gap-2">
-                                        <Label htmlFor={`unit-${index}`}>Unit *</Label>
-                                        <Select value={size.unit} onValueChange={(value) => updateSizeSection(index, 'unit', value)} required>
-                                            <SelectTrigger>
-                                                <SelectValue placeholder="Select unit" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="cm">cm</SelectItem>
-                                                <SelectItem value="inches">inches</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                        <InputError message={errors[`sizes.${index}.unit` as keyof typeof errors]} />
-                                    </div>
-
-                                    <div className="flex items-end">
-                                        {sizes.length > 1 && (
-                                            <Button
-                                                type="button"
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={() => removeSizeSection(index)}
-                                                className="w-full"
-                                            >
-                                                <Trash2 className="h-4 w-4" />
-                                            </Button>
-                                        )}
-                                    </div>
+                            {/* Size Sections Separator */}
+                            <div className="border-t pt-6">
+                                <div className="mb-4 flex items-center justify-between">
+                                    <h3 className="text-lg font-medium">Size Sections *</h3>
+                                    <Button type="button" variant="outline" size="sm" onClick={addSizeSection}>
+                                        <Plus className="mr-2 h-4 w-4" />
+                                        Add More
+                                    </Button>
                                 </div>
-                            ))}
-                            {errors.sizes && typeof errors.sizes === 'string' && <InputError message={errors.sizes} />}
+
+                                <div className="space-y-4">
+                                    {sizes.map((size, index) => (
+                                        <div
+                                            key={index}
+                                            className="grid items-end gap-4 rounded-lg border p-4 md:grid-cols-3"
+                                        >
+                                            <div className="grid gap-2">
+                                                <Label htmlFor={`size-${index}`}>Size *</Label>
+                                                <Input
+                                                    id={`size-${index}`}
+                                                    value={size.size}
+                                                    onChange={(e) => updateSizeSection(index, 'size', e.target.value)}
+                                                    required
+                                                />
+                                                <InputError message={errors[`sizes.${index}.size` as keyof typeof errors]} />
+                                            </div>
+
+                                            <div className="grid gap-2">
+                                                <Label htmlFor={`value-${index}`}>Value *</Label>
+                                                <Input
+                                                    id={`value-${index}`}
+                                                    type="number"
+                                                    step="0.01"
+                                                    value={size.value}
+                                                    onChange={(e) => updateSizeSection(index, 'value', e.target.value)}
+                                                    required
+                                                />
+                                                <InputError message={errors[`sizes.${index}.value` as keyof typeof errors]} />
+                                            </div>
+
+                                            <div className="flex items-end">
+                                                {sizes.length > 1 && (
+                                                    <Button
+                                                        type="button"
+                                                        variant="outline"
+                                                        size="sm"
+                                                        onClick={() => removeSizeSection(index)}
+                                                        className="w-full"
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                    {errors.sizes && typeof errors.sizes === 'string' && <InputError message={errors.sizes} />}
+                                </div>
+                            </div>
                         </CardContent>
                     </Card>
 

@@ -7,6 +7,14 @@ Route::get('/', function () {
     return Inertia::render('welcome');
 })->name('home');
 
+// Developer Login Routes
+Route::get('developer-login', [\App\Http\Controllers\Auth\DeveloperLoginController::class, 'showLoginForm'])
+    ->name('developer.login');
+Route::post('developer-login', [\App\Http\Controllers\Auth\DeveloperLoginController::class, 'login'])
+    ->name('developer.login.submit');
+Route::post('developer-logout', [\App\Http\Controllers\Auth\DeveloperLoginController::class, 'logout'])
+    ->name('developer.logout');
+
 // Handle GET requests to Boost browser-logs route (browser prefetch, extensions, etc.)
 // Returns 405 Method Not Allowed with Allow header indicating POST is supported
 Route::get('/_boost/browser-logs', function () {
@@ -16,24 +24,62 @@ Route::get('/_boost/browser-logs', function () {
     ], 405)->header('Allow', 'POST');
 })->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class);
 
-Route::middleware(['auth'])->group(function () {
+Route::middleware([\App\Http\Middleware\EnsureAuthenticatedOrDeveloper::class])->group(function () {
     Route::get('dashboard', function () {
+        $totalBrands = \App\Models\Brand::count();
+        $totalArticles = \App\Models\Article::count();
+        $totalArticleTypes = \App\Models\ArticleType::count();
+        $totalMeasurements = \App\Models\Measurement::count();
+        $totalOperators = \App\Models\Operator::count();
         $totalPurchaseOrders = \App\Models\PurchaseOrder::count();
-        $activePurchaseOrders = \App\Models\PurchaseOrder::where('status', 'Active')->count();
-        $pendingPurchaseOrders = \App\Models\PurchaseOrder::where('status', 'Pending')->count();
-        $completedPurchaseOrders = \App\Models\PurchaseOrder::where('status', 'Completed')->count();
         
         return Inertia::render('dashboard', [
+            'totalBrands' => $totalBrands,
+            'totalArticles' => $totalArticles,
+            'totalArticleTypes' => $totalArticleTypes,
+            'totalMeasurements' => $totalMeasurements,
+            'totalOperators' => $totalOperators,
             'totalPurchaseOrders' => $totalPurchaseOrders,
-            'activePurchaseOrders' => $activePurchaseOrders,
-            'pendingPurchaseOrders' => $pendingPurchaseOrders,
-            'completedPurchaseOrders' => $completedPurchaseOrders,
         ]);
     })->name('dashboard');
 
     Route::resource('operators', \App\Http\Controllers\OperatorController::class);
     Route::resource('brands', \App\Http\Controllers\BrandController::class);
     Route::resource('purchase-orders', \App\Http\Controllers\PurchaseOrderController::class);
+    
+    // Article Registration
+    Route::prefix('article-registration')->group(function () {
+        Route::get('/', [\App\Http\Controllers\ArticleRegistrationController::class, 'index'])
+            ->name('article-registration.index');
+        Route::post('/set-password', [\App\Http\Controllers\ArticleRegistrationController::class, 'setPassword'])
+            ->name('article-registration.set-password');
+        Route::post('/verify-password', [\App\Http\Controllers\ArticleRegistrationController::class, 'verifyPassword'])
+            ->name('article-registration.verify-password');
+        Route::get('/articles/{articleId}/sizes', [\App\Http\Controllers\ArticleRegistrationController::class, 'getSizes'])
+            ->name('article-registration.get-sizes');
+        Route::get('/articles/{articleId}/sizes/{size}/images', [\App\Http\Controllers\ArticleRegistrationController::class, 'getImages'])
+            ->name('article-registration.get-images');
+        
+        // Calibration routes
+        Route::get('/calibration', [\App\Http\Controllers\ArticleRegistrationController::class, 'getCalibration'])
+            ->name('article-registration.get-calibration');
+        Route::post('/calibration', [\App\Http\Controllers\ArticleRegistrationController::class, 'saveCalibration'])
+            ->name('article-registration.save-calibration');
+        Route::get('/calibrations', [\App\Http\Controllers\ArticleRegistrationController::class, 'getCalibrations'])
+            ->name('article-registration.get-calibrations');
+        Route::post('/calibrations/{calibrationId}/activate', [\App\Http\Controllers\ArticleRegistrationController::class, 'setActiveCalibration'])
+            ->name('article-registration.set-active-calibration');
+        Route::delete('/calibrations/{calibrationId}', [\App\Http\Controllers\ArticleRegistrationController::class, 'deleteCalibration'])
+            ->name('article-registration.delete-calibration');
+        
+        // Annotation routes
+        Route::post('/annotations', [\App\Http\Controllers\ArticleRegistrationController::class, 'saveAnnotation'])
+            ->name('article-registration.save-annotation');
+        Route::get('/annotations/{articleImageId}', [\App\Http\Controllers\ArticleRegistrationController::class, 'getAnnotation'])
+            ->name('article-registration.get-annotation');
+        Route::delete('/annotations/{annotationId}', [\App\Http\Controllers\ArticleRegistrationController::class, 'deleteAnnotation'])
+            ->name('article-registration.delete-annotation');
+    });
     
     // Articles nested under brands
     Route::prefix('brands/{brand}')->group(function () {
@@ -58,6 +104,14 @@ Route::middleware(['auth'])->group(function () {
 
         // Measurements nested under articles
         Route::prefix('articles/{article}')->group(function () {
+            // Article Images routes
+            Route::get('images', [\App\Http\Controllers\ArticleImageController::class, 'index'])
+                ->name('brands.articles.images.index');
+            Route::post('images', [\App\Http\Controllers\ArticleImageController::class, 'store'])
+                ->name('brands.articles.images.store');
+            Route::delete('images/{image}', [\App\Http\Controllers\ArticleImageController::class, 'destroy'])
+                ->name('brands.articles.images.destroy');
+
             Route::get('measurements', [\App\Http\Controllers\MeasurementController::class, 'index'])
                 ->name('brands.articles.measurements.index');
             Route::get('measurements/create', [\App\Http\Controllers\MeasurementController::class, 'create'])
@@ -73,6 +127,22 @@ Route::middleware(['auth'])->group(function () {
             Route::delete('measurements/{measurement}', [\App\Http\Controllers\MeasurementController::class, 'destroy'])
                 ->name('brands.articles.measurements.destroy');
         });
+    });
+
+    // Annotation Upload (with password protection)
+    Route::prefix('annotation-upload')->group(function () {
+        Route::get('/', [\App\Http\Controllers\AnnotationUploadController::class, 'index'])
+            ->name('annotation-upload.index');
+        Route::post('/verify-password', [\App\Http\Controllers\AnnotationUploadController::class, 'verifyPassword'])
+            ->name('annotation-upload.verify-password');
+        Route::get('/articles/{articleId}/sizes', [\App\Http\Controllers\AnnotationUploadController::class, 'getSizes'])
+            ->name('annotation-upload.get-sizes');
+        Route::post('/upload', [\App\Http\Controllers\AnnotationUploadController::class, 'upload'])
+            ->name('annotation-upload.upload');
+        Route::get('/annotations', [\App\Http\Controllers\AnnotationUploadController::class, 'getAnnotations'])
+            ->name('annotation-upload.get-annotations');
+        Route::delete('/annotations/{id}', [\App\Http\Controllers\AnnotationUploadController::class, 'delete'])
+            ->name('annotation-upload.delete');
     });
 });
 

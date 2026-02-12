@@ -6,12 +6,14 @@ import { dashboard } from '@/routes';
 import operatorRoutes from '@/routes/operators';
 import brandRoutes from '@/routes/brands';
 import purchaseOrderRoutes from '@/routes/purchase-orders';
-import { type NavItem } from '@/types';
-import { Link } from '@inertiajs/react';
-import { BookOpen, Folder, LayoutGrid, Users, Tag, ShoppingCart } from 'lucide-react';
+import annotationUploadRoutes from '@/routes/annotation-upload';
+import { type NavItem, type SharedData } from '@/types';
+import { Link, usePage } from '@inertiajs/react';
+import { LayoutGrid, Users, Tag, ShoppingCart, Upload, Code2 } from 'lucide-react';
 import AppLogo from './app-logo';
 
-const mainNavItems: NavItem[] = [
+// Base navigation items (available to all users)
+const baseNavItems: NavItem[] = [
     {
         title: 'Dashboard',
         href: dashboard(),
@@ -34,20 +36,25 @@ const mainNavItems: NavItem[] = [
     },
 ];
 
-const footerNavItems: NavItem[] = [
-    // {
-    //     title: 'Repository',
-    //     href: 'https://github.com/laravel/react-starter-kit',
-    //     icon: Folder,
-    // },
-    // {
-    //     title: 'Documentation',
-    //     href: 'https://laravel.com/docs/starter-kits#react',
-    //     icon: BookOpen,
-    // },
-];
+// Developer-only navigation item
+const developerNavItem: NavItem = {
+    title: 'Annotation Upload',
+    href: annotationUploadRoutes.index(),
+    icon: Upload,
+};
+
+const footerNavItems: NavItem[] = [];
 
 export function AppSidebar() {
+    const { isDeveloper } = usePage<SharedData>().props;
+
+    // Build navigation items based on user role
+    const mainNavItems: NavItem[] = [...baseNavItems];
+
+    if (isDeveloper) {
+        mainNavItems.push(developerNavItem);
+    }
+
     return (
         <Sidebar collapsible="icon" variant="inset">
             <SidebarHeader>
@@ -68,6 +75,14 @@ export function AppSidebar() {
 
             <SidebarFooter>
                 <NavFooter items={footerNavItems} className="mt-auto" />
+                {isDeveloper && (
+                    <div className="px-3 py-2">
+                        <div className="flex items-center gap-2 rounded-lg bg-gradient-to-r from-[#264c59]/10 to-transparent px-3 py-2 text-xs text-[#264c59]">
+                            <Code2 className="h-3 w-3" />
+                            <span className="font-medium">Developer Mode</span>
+                        </div>
+                    </div>
+                )}
                 <NavUser />
             </SidebarFooter>
         </Sidebar>

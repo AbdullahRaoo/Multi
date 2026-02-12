@@ -11,6 +11,7 @@ interface Operator {
     full_name: string;
     employee_id: string;
     department: string | null;
+    contact_number: string | null;
     created_at: string;
     updated_at: string;
 }
@@ -82,6 +83,12 @@ export default function Show({ operator }: Props) {
                                     Department
                                 </p>
                                 <p className="text-base">{operator.department || 'N/A'}</p>
+                            </div>
+                            <div>
+                                <p className="text-sm font-medium text-neutral-600 dark:text-neutral-400">
+                                    Contact Number
+                                </p>
+                                <p className="text-base">{operator.contact_number || 'N/A'}</p>
                             </div>
                             <div>
                                 <p className="text-sm font-medium text-neutral-600 dark:text-neutral-400">

@@ -1,0 +1,63 @@
+=== UPLOADED_ANNOTATIONS TABLE STRUCTURE ===
+
+COLUMNS:
+----------------------------------------------------------------------------------------------------
+id                             | bigint(20) unsigned  | NOT NULL   | 
+article_id                     | bigint(20) unsigned  | NULL       | 
+article_style                  | varchar(255)         | NOT NULL   | 
+size                           | varchar(255)         | NOT NULL   | 
+side                           | varchar(10)          | NOT NULL   | DEFAULT 'front'
+name                           | varchar(255)         | NULL       | 
+annotation_data                | longtext             | NOT NULL   | 
+reference_image_path           | varchar(255)         | NULL       | 
+reference_image_filename       | varchar(255)         | NULL       | 
+reference_image_mime_type      | varchar(255)         | NULL       | 
+reference_image_size           | bigint(20) unsigned  | NULL       | 
+image_width                    | int(11)              | NULL       | 
+image_height                   | int(11)              | NULL       | 
+original_json_filename         | varchar(255)         | NULL       | 
+api_image_url                  | varchar(255)         | NULL       | 
+upload_source                  | varchar(255)         | NOT NULL   | DEFAULT 'manual'
+annotation_date                | timestamp            | NULL       | 
+created_at                     | timestamp            | NULL       | 
+updated_at                     | timestamp            | NULL       | 
+
+----------------------------------------------------------------------------------------------------
+INDEXES:
+----------------------------------------------------------------------------------------------------
+UNIQUE     | PRIMARY                                            | (id)
+UNIQUE     | article_id_size_side_unique                        | (article_id, size, side)
+UNIQUE     | uploaded_annotations_article_size_side_unique      | (article_id, size, side)
+INDEX      | uploaded_annotations_article_style_index           | (article_style)
+INDEX      | uploaded_annotations_size_index                    | (size)
+
+====================================================================================================
+FULL CREATE TABLE STATEMENT:
+====================================================================================================
+CREATE TABLE `uploaded_annotations` (
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `article_id` bigint(20) unsigned DEFAULT NULL,
+  `article_style` varchar(255) NOT NULL,
+  `size` varchar(255) NOT NULL,
+  `side` varchar(10) NOT NULL DEFAULT 'front',
+  `name` varchar(255) DEFAULT NULL,
+  `annotation_data` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL CHECK (json_valid(`annotation_data`)),
+  `reference_image_path` varchar(255) DEFAULT NULL,
+  `reference_image_filename` varchar(255) DEFAULT NULL,
+  `reference_image_mime_type` varchar(255) DEFAULT NULL,
+  `reference_image_size` bigint(20) unsigned DEFAULT NULL,
+  `image_width` int(11) DEFAULT NULL,
+  `image_height` int(11) DEFAULT NULL,
+  `original_json_filename` varchar(255) DEFAULT NULL,
+  `api_image_url` varchar(255) DEFAULT NULL,
+  `upload_source` varchar(255) NOT NULL DEFAULT 'manual',
+  `annotation_date` timestamp NULL DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `article_id_size_side_unique` (`article_id`,`size`,`side`),
+  UNIQUE KEY `uploaded_annotations_article_size_side_unique` (`article_id`,`size`,`side`),
+  KEY `uploaded_annotations_article_style_index` (`article_style`),
+  KEY `uploaded_annotations_size_index` (`size`),
+  CONSTRAINT `uploaded_annotations_article_id_foreign` FOREIGN KEY (`article_id`) REFERENCES `articles` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB AUTO_INCREMENT=28 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci

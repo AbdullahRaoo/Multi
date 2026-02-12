@@ -21,6 +21,7 @@ interface Operator {
     full_name: string;
     employee_id: string;
     department: string | null;
+    contact_number: string | null;
     created_at: string;
     updated_at: string;
 }
@@ -78,6 +79,7 @@ export default function Index({ operators }: Props) {
                                 <TableHead>Full Name</TableHead>
                                 <TableHead>Employee ID</TableHead>
                                 <TableHead>Department</TableHead>
+                                <TableHead>Contact Number</TableHead>
                                 <TableHead>Created At</TableHead>
                                 <TableHead>Updated At</TableHead>
                                 <TableHead className="text-right">Actions</TableHead>
@@ -86,7 +88,7 @@ export default function Index({ operators }: Props) {
                         <TableBody>
                             {operators.data.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={6} className="text-center text-neutral-500">
+                                    <TableCell colSpan={7} className="text-center text-neutral-500">
                                         No operators found. Create your first one!
                                     </TableCell>
                                 </TableRow>
@@ -96,6 +98,7 @@ export default function Index({ operators }: Props) {
                                         <TableCell className="font-medium">{operator.full_name}</TableCell>
                                         <TableCell>{operator.employee_id}</TableCell>
                                         <TableCell>{operator.department || 'N/A'}</TableCell>
+                                        <TableCell>{operator.contact_number || 'N/A'}</TableCell>
                                         <TableCell>
                                             {new Date(operator.created_at).toLocaleDateString()}
                                         </TableCell>
@@ -140,11 +143,10 @@ export default function Index({ operators }: Props) {
                                 <Link
                                     key={index}
                                     href={link.url || '#'}
-                                    className={`rounded px-3 py-1 text-sm ${
-                                        link.active
+                                    className={`rounded px-3 py-1 text-sm ${link.active
                                             ? 'bg-sidebar-primary text-white'
                                             : 'bg-white text-neutral-700 hover:bg-neutral-100 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700'
-                                    } ${!link.url ? 'pointer-events-none opacity-50' : ''}`}
+                                        } ${!link.url ? 'pointer-events-none opacity-50' : ''}`}
                                     dangerouslySetInnerHTML={{ __html: link.label }}
                                 />
                             ))}

@@ -40,6 +40,7 @@ class OperatorController extends Controller
             'full_name' => ['required', 'string', 'max:255'],
             'employee_id' => ['required', 'string', 'max:255', 'unique:operators,employee_id'],
             'department' => ['nullable', 'string', 'max:255'],
+            'contact_number' => ['nullable', 'string', 'max:20'],
             'login_pin' => ['required', 'string', 'min:4', 'max:10'],
         ], [
             'full_name.required' => 'Full name is required.',
@@ -54,6 +55,7 @@ class OperatorController extends Controller
             'full_name' => $validated['full_name'],
             'employee_id' => $validated['employee_id'],
             'department' => $validated['department'] ?? null,
+            'contact_number' => $validated['contact_number'] ?? null,
             'login_pin' => Hash::make($validated['login_pin']),
         ]);
 
@@ -90,6 +92,7 @@ class OperatorController extends Controller
             'full_name' => ['required', 'string', 'max:255'],
             'employee_id' => ['required', 'string', 'max:255', 'unique:operators,employee_id,'.$operator->id],
             'department' => ['nullable', 'string', 'max:255'],
+            'contact_number' => ['nullable', 'string', 'max:20'],
             'login_pin' => ['nullable', 'string', 'min:4', 'max:10'],
         ], [
             'full_name.required' => 'Full name is required.',
@@ -103,6 +106,7 @@ class OperatorController extends Controller
             'full_name' => $validated['full_name'],
             'employee_id' => $validated['employee_id'],
             'department' => $validated['department'] ?? null,
+            'contact_number' => $validated['contact_number'] ?? null,
         ];
 
         // Only update login_pin if provided

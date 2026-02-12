@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Article;
+use App\Models\ArticleAnnotation;
 use App\Models\ArticleType;
 use App\Models\Brand;
 use Illuminate\Http\RedirectResponse;
@@ -85,11 +86,31 @@ class ArticleController extends Controller
      */
     public function show(Brand $brand, Article $article): Response
     {
-        $article->load(['articleType', 'brand', 'measurements.sizes']);
+        $article->load(['articleType', 'brand', 'measurements.sizes', 'images']);
+
+        // Load annotations for this article (by article_style)
+        $annotations = ArticleAnnotation::where('article_style', $article->article_style)
+            ->get()
+            ->map(function ($annotation) {
+                return [
+                    'id' => $annotation->id,
+                    'article_style' => $annotation->article_style,
+                    'size' => $annotation->size,
+                    'name' => $annotation->name,
+                    'annotations' => $annotation->annotations,
+                    'reference_image_path' => $annotation->reference_image_path,
+                    'json_file_path' => $annotation->json_file_path,
+                    'created_at' => $annotation->created_at->format('Y-m-d H:i:s'),
+                    'updated_at' => $annotation->updated_at->format('Y-m-d H:i:s'),
+                ];
+            })
+            ->values()
+            ->toArray(); // Convert to plain array for Inertia
 
         return Inertia::render('articles/show', [
             'brand' => $brand,
             'article' => $article,
+            'annotations' => $annotations,
         ]);
     }
 

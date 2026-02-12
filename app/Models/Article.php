@@ -32,4 +32,9 @@ class Article extends Model
     {
         return $this->hasMany(Measurement::class);
     }
+
+    public function images(): HasMany
+    {
+        return $this->hasMany(ArticleImage::class);
+    }
 }

@@ -48,6 +48,8 @@ class AuthenticatedSessionController extends Controller
     {
         Auth::guard('web')->logout();
 
+        $request->session()->forget('is_developer'); // Clear developer session
+
         $request->session()->invalidate();
 
         $request->session()->regenerateToken();

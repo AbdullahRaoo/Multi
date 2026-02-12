@@ -63,14 +63,6 @@ export default function Login({ status, canResetPassword }: { status?: string; c
                         <div className="space-y-2">
                             <div className="flex items-center justify-between">
                                 <Label htmlFor="password">Password</Label>
-                                {canResetPassword && (
-                                    <Link
-                                        href="#"
-                                        className="text-sm font-medium text-[#f53003] hover:underline dark:text-[#FF4433]"
-                                    >
-                                        Forgot password?
-                                    </Link>
-                                )}
                             </div>
                             <Input
                                 id="password"

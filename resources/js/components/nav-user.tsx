@@ -8,9 +8,21 @@ import { usePage } from '@inertiajs/react';
 import { ChevronsUpDown } from 'lucide-react';
 
 export function NavUser() {
-    const { auth } = usePage<SharedData>().props;
+    const { auth, isDeveloper } = usePage<SharedData>().props;
     const { state } = useSidebar();
     const isMobile = useIsMobile();
+
+    // Create a fallback user object if in developer mode
+    const user = auth.user || (isDeveloper ? {
+        id: 0,
+        name: 'Developer Access',
+        email: 'developer',
+        email_verified_at: new Date().toISOString(),
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+    } : null);
+
+    if (!user) return null;
 
     return (
         <SidebarMenu>
@@ -18,7 +30,7 @@ export function NavUser() {
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <SidebarMenuButton size="lg" className="group text-sidebar-accent-foreground data-[state=open]:bg-sidebar-accent">
-                            <UserInfo user={auth.user} />
+                            <UserInfo user={user as any} />
                             <ChevronsUpDown className="ml-auto size-4" />
                         </SidebarMenuButton>
                     </DropdownMenuTrigger>
@@ -27,7 +39,7 @@ export function NavUser() {
                         align="end"
                         side={isMobile ? 'bottom' : state === 'collapsed' ? 'left' : 'bottom'}
                     >
-                        <UserMenuContent user={auth.user} />
+                        <UserMenuContent user={user as any} />
                     </DropdownMenuContent>
                 </DropdownMenu>
             </SidebarMenuItem>

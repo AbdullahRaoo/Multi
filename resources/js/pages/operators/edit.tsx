@@ -14,6 +14,7 @@ interface Operator {
     full_name: string;
     employee_id: string;
     department: string | null;
+    contact_number: string | null;
     created_at: string;
     updated_at: string;
 }
@@ -27,6 +28,7 @@ export default function Edit({ operator }: Props) {
         full_name: operator.full_name,
         employee_id: operator.employee_id,
         department: operator.department || '',
+        contact_number: operator.contact_number || '',
         login_pin: '',
     });
 
@@ -96,6 +98,17 @@ export default function Edit({ operator }: Props) {
                                     onChange={(e) => setData('department', e.target.value)}
                                 />
                                 <InputError message={errors.department} />
+                            </div>
+
+                            <div className="grid gap-2">
+                                <Label htmlFor="contact_number">Contact Number</Label>
+                                <Input
+                                    id="contact_number"
+                                    value={data.contact_number}
+                                    onChange={(e) => setData('contact_number', e.target.value)}
+                                    placeholder="e.g. +1234567890"
+                                />
+                                <InputError message={errors.contact_number} />
                             </div>
 
                             <div className="grid gap-2">

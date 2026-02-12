@@ -13,6 +13,7 @@ class Operator extends Model
         'full_name',
         'employee_id',
         'department',
+        'contact_number',
         'login_pin',
     ];
 
