@@ -116,6 +116,14 @@ Route::middleware([\App\Http\Middleware\EnsureAuthenticatedOrDeveloper::class])-
             Route::get('camera-capture', [\App\Http\Controllers\CameraCaptureController::class, 'show'])
                 ->name('brands.articles.camera-capture');
 
+            // Camera API proxy — status triggers auto-start; mode sets camera settings
+            // Stream & capture go directly from browser to camera server (no PHP proxy)
+            // to avoid session locking and output buffering issues.
+            Route::get('camera/status', [\App\Http\Controllers\CameraCaptureController::class, 'status'])
+                ->name('brands.articles.camera.status');
+            Route::post('camera/mode', [\App\Http\Controllers\CameraCaptureController::class, 'setMode'])
+                ->name('brands.articles.camera.mode');
+
             // Article Images routes
             Route::get('images', [\App\Http\Controllers\ArticleImageController::class, 'index'])
                 ->name('brands.articles.images.index');

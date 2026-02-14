@@ -52,12 +52,21 @@ interface Props {
 type Step = 'mode_selection' | 'live_preview' | 'captured_preview' | 'saving';
 
 interface CameraStatus {
-    status: 'ready' | 'no_camera' | 'offline';
+    status: 'ready' | 'no_camera' | 'offline' | 'starting';
     camera_type: string | null;
     current_mode: string;
+    auto_start?: boolean;
+    camera_url?: string;
 }
 
-const CAMERA_SERVER = 'http://localhost:5555';
+// Laravel proxy for status only (triggers auto-start).
+// Stream and capture go DIRECTLY to the camera server to avoid
+// PHP session-lock and buffering issues.
+const getCameraBase = (brandId: number, articleId: number) =>
+    `/brands/${brandId}/articles/${articleId}/camera`;
+
+// Default direct camera server URL (overridden by status response)
+const DEFAULT_CAMERA_URL = 'http://127.0.0.1:5555';
 
 // ---------------------------------------------------------------------------
 // Component
@@ -70,6 +79,7 @@ export default function CameraCapture({ brand, article, selectedSize }: Props) {
     const [cameraStatus, setCameraStatus] = useState<CameraStatus | null>(null);
     const [cameraChecking, setCameraChecking] = useState(false);
     const [capturedImage, setCapturedImage] = useState<string | null>(null);
+    const capturedBlobRef = useRef<Blob | null>(null);
     const [capturedMeta, setCapturedMeta] = useState<{
         width: number;
         height: number;
@@ -80,6 +90,15 @@ export default function CameraCapture({ brand, article, selectedSize }: Props) {
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [saveSuccess, setSaveSuccess] = useState(false);
+    const [cameraStarting, setCameraStarting] = useState(false);
+    const [retryTrigger, setRetryTrigger] = useState(0);
+    const [cameraUrl, setCameraUrl] = useState(DEFAULT_CAMERA_URL);
+
+    // Stream reconnection & load tracking
+    const [streamKey, setStreamKey] = useState(0);
+    const [streamLoaded, setStreamLoaded] = useState(false);
+    const imageModeRef = useRef<'black' | 'other' | null>(null);
+    const prevOnlineRef = useRef(false);
 
     // File upload fallback
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -103,57 +122,152 @@ export default function CameraCapture({ brand, article, selectedSize }: Props) {
     // Camera server communication
     // -------------------------------------------------------------------
 
-    const checkCameraServer = useCallback(async () => {
-        setCameraChecking(true);
-        try {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 3000);
-            const res = await fetch(`${CAMERA_SERVER}/api/status`, {
-                signal: controller.signal,
-            });
-            clearTimeout(timeoutId);
-            if (res.ok) {
-                const data = await res.json();
-                setCameraStatus(data);
-                setError(null);
-            } else {
+    const cameraBase = getCameraBase(brand.id, article.id);
+
+    // Auto-start & poll: the backend auto-launches the camera server if not
+    // running and returns status 'starting'. We poll every second until ready.
+    useEffect(() => {
+        let active = true;
+        let timer: ReturnType<typeof setTimeout> | null = null;
+        let attempts = 0;
+        const MAX_ATTEMPTS = 25; // ~25 seconds max
+
+        const poll = async () => {
+            if (!active) return;
+            setCameraChecking(true);
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 4000);
+                const res = await fetch(`${cameraBase}/status`, {
+                    signal: controller.signal,
+                });
+                clearTimeout(timeoutId);
+                if (!active) return;
+
+                if (res.ok) {
+                    const data = await res.json();
+                    setCameraStatus(data);
+                    setError(null);
+
+                    // Store the direct camera server URL from backend
+                    if (data.camera_url) {
+                        setCameraUrl(data.camera_url);
+                    }
+
+                    // Server is fully up — stop polling
+                    if (data.status === 'ready' || data.status === 'no_camera') {
+                        setCameraStarting(false);
+                        setCameraChecking(false);
+                        return;
+                    }
+
+                    // Backend is auto-starting the camera server
+                    if (data.auto_start || data.status === 'starting') {
+                        setCameraStarting(true);
+                    }
+                } else {
+                    setCameraStatus({ status: 'offline', camera_type: null, current_mode: 'other' });
+                }
+            } catch {
+                if (!active) return;
                 setCameraStatus({ status: 'offline', camera_type: null, current_mode: 'other' });
             }
-        } catch {
-            setCameraStatus({ status: 'offline', camera_type: null, current_mode: 'other' });
-        } finally {
             setCameraChecking(false);
+            attempts++;
+            if (attempts < MAX_ATTEMPTS && active) {
+                timer = setTimeout(poll, 1000);
+            } else if (active) {
+                setCameraStarting(false);
+            }
+        };
+
+        poll();
+        return () => {
+            active = false;
+            if (timer) clearTimeout(timer);
+        };
+    }, [cameraBase, retryTrigger]);
+
+    // Revoke object URL on unmount or when capturedImage changes to prevent memory leaks
+    useEffect(() => {
+        return () => {
+            if (capturedImage && capturedImage.startsWith('blob:')) {
+                URL.revokeObjectURL(capturedImage);
+            }
+        };
+    }, [capturedImage]);
+
+    // When camera comes online, reconnect the MJPEG stream and re-send mode
+    useEffect(() => {
+        const online = cameraStatus?.status === 'ready';
+        if (online && !prevOnlineRef.current) {
+            setStreamKey((k) => k + 1);
+            setStreamLoaded(false);
+            // Re-apply the selected mode so camera uses correct gain/AE
+            const mode = imageModeRef.current;
+            if (mode) {
+                fetch(`${cameraUrl}/api/mode`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ mode }),
+                }).catch(() => {});
+            }
         }
+        prevOnlineRef.current = !!online;
+    }, [cameraStatus, cameraUrl]);
+
+    // Manual retry — increments retryTrigger to restart the polling effect
+    const retryCamera = useCallback(() => {
+        setCameraStarting(true);
+        setCameraStatus(null);
+        setError(null);
+        setRetryTrigger((t) => t + 1);
     }, []);
 
-    // Check camera on mount
-    useEffect(() => {
-        checkCameraServer();
-    }, [checkCameraServer]);
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 
+    // Mode, stream, capture go DIRECTLY to camera server (no PHP proxy)
+    // to avoid session locking and output buffering issues.
     const setModeOnServer = async (mode: 'black' | 'other') => {
         try {
-            await fetch(`${CAMERA_SERVER}/api/mode`, {
+            await fetch(`${cameraUrl}/api/mode`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ mode }),
             });
         } catch {
-            // Mode will be included in metadata regardless
+            // Also try through Laravel proxy as fallback
+            try {
+                await fetch(`${cameraBase}/mode`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                    },
+                    body: JSON.stringify({ mode }),
+                });
+            } catch {
+                // Mode will be included in metadata regardless
+            }
         }
     };
 
     const handleModeSelect = async (mode: 'black' | 'other') => {
         setImageMode(mode);
+        imageModeRef.current = mode;
         setError(null);
+        setStreamLoaded(false);
+        setStreamKey((k) => k + 1);
 
-        // Set mode on camera server
-        await setModeOnServer(mode);
+        // Go to live preview instantly — no blocking delays.
+        // Camera server stabilizes gain/AE internally; capture endpoint
+        // enforces settle time before grabbing a frame.
+        setStep('live_preview');
 
-        // Brief delay for camera to adjust
-        setTimeout(() => {
-            setStep('live_preview');
-        }, 300);
+        // Set mode on camera server in background (non-blocking).
+        // If server isn't running yet, the reconnection effect will
+        // re-send the mode once it comes online.
+        setModeOnServer(mode).catch(() => {});
     };
 
     const handleCapture = async () => {
@@ -161,30 +275,54 @@ export default function CameraCapture({ brand, article, selectedSize }: Props) {
         setError(null);
 
         try {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 15000);
-            const res = await fetch(`${CAMERA_SERVER}/api/capture`, {
-                method: 'POST',
-                signal: controller.signal,
+            // Capture directly from camera server (not through PHP proxy)
+            // to avoid PHP session lock from the MJPEG stream connection.
+            // Pass current mode so server can verify/re-apply settings.
+            const modeParam = imageMode || 'other';
+            const res = await fetch(`${cameraUrl}/api/capture-jpeg?mode=${modeParam}`, {
+                method: 'GET',
             });
-            clearTimeout(timeoutId);
 
             if (!res.ok) {
-                throw new Error('Capture failed');
+                const errData = await res.json().catch(() => null);
+                throw new Error(errData?.error || `Capture failed (HTTP ${res.status})`);
             }
 
-            const data = await res.json();
-            if (data.success) {
-                setCapturedImage(`data:image/jpeg;base64,${data.image}`);
+            const contentType = res.headers.get('Content-Type') || '';
+
+            if (contentType.includes('image/jpeg')) {
+                // Fast path: keep the binary blob as-is, use object URL for
+                // instant zero-copy preview (no base64 encoding at all).
+                const blob = await res.blob();
+                capturedBlobRef.current = blob;
+                setCapturedImage(URL.createObjectURL(blob));
                 setCapturedMeta({
-                    width: data.width,
-                    height: data.height,
-                    timestamp: data.timestamp,
-                    camera_type: data.camera_type,
+                    width: parseInt(res.headers.get('X-Image-Width') || '0'),
+                    height: parseInt(res.headers.get('X-Image-Height') || '0'),
+                    timestamp: res.headers.get('X-Capture-Timestamp') || '',
+                    camera_type: 'mindvision',
                 });
                 setStep('captured_preview');
             } else {
-                throw new Error(data.error || 'Capture failed');
+                // Fallback JSON path (legacy base64)
+                const data = await res.json();
+                if (data.success) {
+                    const byteChars = atob(data.image);
+                    const byteArr = new Uint8Array(byteChars.length);
+                    for (let i = 0; i < byteChars.length; i++) byteArr[i] = byteChars.charCodeAt(i);
+                    const blob = new Blob([byteArr], { type: 'image/jpeg' });
+                    capturedBlobRef.current = blob;
+                    setCapturedImage(URL.createObjectURL(blob));
+                    setCapturedMeta({
+                        width: data.width,
+                        height: data.height,
+                        timestamp: data.timestamp,
+                        camera_type: data.camera_type,
+                    });
+                    setStep('captured_preview');
+                } else {
+                    throw new Error(data.error || 'Capture failed');
+                }
             }
         } catch (err: any) {
             setError(err.message || 'Failed to capture image from camera server');
@@ -194,59 +332,54 @@ export default function CameraCapture({ brand, article, selectedSize }: Props) {
     };
 
     const handleRetake = async () => {
+        // Revoke object URL to free memory
+        if (capturedImage && capturedImage.startsWith('blob:')) {
+            URL.revokeObjectURL(capturedImage);
+        }
+        capturedBlobRef.current = null;
         setCapturedImage(null);
         setCapturedMeta(null);
+        setStreamLoaded(false);
+        setStreamKey((k) => k + 1);
         setStep('live_preview');
     };
 
     const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (file) {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                const img = new Image();
-                img.onload = () => {
-                    setCapturedImage(reader.result as string);
-                    setCapturedMeta({
-                        width: img.naturalWidth,
-                        height: img.naturalHeight,
-                        timestamp: new Date()
-                            .toISOString()
-                            .replace(/[-:T]/g, '')
-                            .slice(0, 15),
-                        camera_type: 'file_upload',
-                    });
-                    setStep('captured_preview');
-                };
-                img.src = reader.result as string;
+            // Store the file blob directly — use object URL for instant preview
+            capturedBlobRef.current = file;
+            const objectUrl = URL.createObjectURL(file);
+            const img = new Image();
+            img.onload = () => {
+                setCapturedImage(objectUrl);
+                setCapturedMeta({
+                    width: img.naturalWidth,
+                    height: img.naturalHeight,
+                    timestamp: new Date()
+                        .toISOString()
+                        .replace(/[-:T]/g, '')
+                        .slice(0, 15),
+                    camera_type: 'file_upload',
+                });
+                setStep('captured_preview');
             };
-            reader.readAsDataURL(file);
+            img.src = objectUrl;
         }
         // Reset input so same file can be re-selected
         event.target.value = '';
     };
 
-    const dataURLtoBlob = (dataURL: string): Blob => {
-        const arr = dataURL.split(',');
-        const mime = arr[0].match(/:(.*?);/)?.[1] || 'image/jpeg';
-        const bstr = atob(arr[1]);
-        let n = bstr.length;
-        const u8arr = new Uint8Array(n);
-        while (n--) {
-            u8arr[n] = bstr.charCodeAt(n);
-        }
-        return new Blob([u8arr], { type: mime });
-    };
-
     const handleSave = async () => {
-        if (!capturedImage) return;
+        if (!capturedBlobRef.current) return;
 
         setIsSaving(true);
         setStep('saving');
         setError(null);
 
         try {
-            const blob = dataURLtoBlob(capturedImage);
+            // Use the blob directly — no base64 encode/decode roundtrip
+            const blob = capturedBlobRef.current;
             const modeLabel = imageMode === 'black' ? 'black' : 'other';
             const timestamp = capturedMeta?.timestamp || Date.now().toString();
             const fileName = `mv_${modeLabel}_${article.article_style}_${size}_${timestamp}.jpg`;
@@ -271,6 +404,11 @@ export default function CameraCapture({ brand, article, selectedSize }: Props) {
 
             if (response.ok) {
                 setSaveSuccess(true);
+                // Clean up object URL before redirect
+                if (capturedImage && capturedImage.startsWith('blob:')) {
+                    URL.revokeObjectURL(capturedImage);
+                }
+                capturedBlobRef.current = null;
                 // Redirect after brief success display
                 setTimeout(() => {
                     router.visit(
@@ -346,26 +484,30 @@ export default function CameraCapture({ brand, article, selectedSize }: Props) {
                             className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium ${
                                 isServerOnline
                                     ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                                    : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                                    : cameraStarting
+                                      ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+                                      : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
                             }`}
                         >
                             {isServerOnline ? (
                                 <Wifi className="h-3 w-3" />
+                            ) : cameraStarting ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
                             ) : (
                                 <WifiOff className="h-3 w-3" />
                             )}
-                            {cameraChecking
-                                ? 'Checking...'
-                                : isServerOnline
-                                  ? 'Camera Ready'
+                            {isServerOnline
+                                ? 'Camera Ready'
+                                : cameraStarting
+                                  ? 'Starting Camera...'
                                   : 'Camera Offline'}
                         </div>
 
-                        {!isServerOnline && (
+                        {!isServerOnline && !cameraStarting && (
                             <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={checkCameraServer}
+                                onClick={retryCamera}
                                 disabled={cameraChecking}
                             >
                                 <RefreshCw
@@ -406,8 +548,7 @@ export default function CameraCapture({ brand, article, selectedSize }: Props) {
                             {/* Black Image */}
                             <button
                                 onClick={() => handleModeSelect('black')}
-                                disabled={!isServerOnline}
-                                className="group relative flex flex-col items-center gap-4 rounded-2xl border-2 border-neutral-200 bg-white p-8 text-center transition-all hover:border-neutral-900 hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50 dark:border-neutral-700 dark:bg-neutral-900 dark:hover:border-neutral-400"
+                                className="group relative flex flex-col items-center gap-4 rounded-2xl border-2 border-neutral-200 bg-white p-8 text-center transition-all hover:border-neutral-900 hover:shadow-lg dark:border-neutral-700 dark:bg-neutral-900 dark:hover:border-neutral-400"
                             >
                                 <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-neutral-900 text-white transition-transform group-hover:scale-110 dark:bg-neutral-100 dark:text-neutral-900">
                                     <Moon className="h-10 w-10" />
@@ -423,8 +564,7 @@ export default function CameraCapture({ brand, article, selectedSize }: Props) {
                             {/* Other Colors */}
                             <button
                                 onClick={() => handleModeSelect('other')}
-                                disabled={!isServerOnline}
-                                className="group relative flex flex-col items-center gap-4 rounded-2xl border-2 border-neutral-200 bg-white p-8 text-center transition-all hover:border-[#FFCD73] hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50 dark:border-neutral-700 dark:bg-neutral-900 dark:hover:border-[#FFCD73]"
+                                className="group relative flex flex-col items-center gap-4 rounded-2xl border-2 border-neutral-200 bg-white p-8 text-center transition-all hover:border-[#FFCD73] hover:shadow-lg dark:border-neutral-700 dark:bg-neutral-900 dark:hover:border-[#FFCD73]"
                             >
                                 <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-[#FFCD73] text-white transition-transform group-hover:scale-110">
                                     <Sun className="h-10 w-10" />
@@ -438,18 +578,22 @@ export default function CameraCapture({ brand, article, selectedSize }: Props) {
                             </button>
                         </div>
 
-                        {/* Camera offline message */}
-                        {!isServerOnline && !cameraChecking && (
-                            <div className="max-w-lg text-center">
-                                <p className="text-sm text-neutral-500">
-                                    Camera server is not running. Start it with:
-                                </p>
-                                <code className="mt-2 block rounded bg-neutral-100 px-4 py-2 text-xs dark:bg-neutral-800">
-                                    python python/camera_server.py
-                                </code>
-                                <p className="mt-3 text-xs text-neutral-400">
-                                    Or use file upload as an alternative:
-                                </p>
+                        {/* Non-blocking status hint + file upload */}
+                        <div className="flex flex-col items-center gap-3">
+                            {!isServerOnline && (
+                                <div className="flex items-center gap-2 text-xs text-neutral-400">
+                                    {cameraStarting ? (
+                                        <>
+                                            <Loader2 className="h-3 w-3 animate-spin" />
+                                            <span>Camera starting in background...</span>
+                                        </>
+                                    ) : (
+                                        <span>Camera will auto-start when you select a mode</span>
+                                    )}
+                                </div>
+                            )}
+                            <div className="flex items-center gap-3">
+                                <span className="text-xs text-neutral-400">or</span>
                                 <input
                                     type="file"
                                     ref={fileInputRef}
@@ -460,7 +604,6 @@ export default function CameraCapture({ brand, article, selectedSize }: Props) {
                                 <Button
                                     variant="outline"
                                     size="sm"
-                                    className="mt-2"
                                     onClick={() => {
                                         if (!imageMode) setImageMode('other');
                                         fileInputRef.current?.click();
@@ -470,7 +613,7 @@ export default function CameraCapture({ brand, article, selectedSize }: Props) {
                                     Upload Image File
                                 </Button>
                             </div>
-                        )}
+                        </div>
                     </div>
                 )}
 
@@ -532,31 +675,30 @@ export default function CameraCapture({ brand, article, selectedSize }: Props) {
                             </div>
                         </div>
 
-                        {/* MJPEG Stream */}
+                        {/* MJPEG Stream — auto-reconnects via streamKey */}
                         <div className="relative flex flex-1 items-center justify-center overflow-hidden rounded-xl border-2 border-neutral-200 bg-black dark:border-neutral-700">
-                            {isServerOnline ? (
-                                <img
-                                    src={`${CAMERA_SERVER}/api/stream`}
-                                    alt="Live Camera Feed"
-                                    className="h-full max-h-[calc(100vh-320px)] w-auto object-contain"
-                                    onError={() =>
-                                        setError(
-                                            'Camera stream interrupted. Check camera server.',
-                                        )
-                                    }
-                                />
-                            ) : (
-                                <div className="flex flex-col items-center gap-4 text-white">
-                                    <WifiOff className="h-16 w-16 text-neutral-400" />
-                                    <p className="text-neutral-400">Camera server not available</p>
-                                    <Button
-                                        variant="secondary"
-                                        size="sm"
-                                        onClick={checkCameraServer}
-                                    >
-                                        <RefreshCw className="mr-2 h-3 w-3" />
-                                        Retry Connection
-                                    </Button>
+                            {/* Always render stream img (hidden until loaded) */}
+                            <img
+                                key={streamKey}
+                                src={`${cameraUrl}/api/stream?t=${streamKey}`}
+                                alt="Live Camera Feed"
+                                className={`h-full max-h-[calc(100vh-320px)] w-auto object-contain ${
+                                    streamLoaded ? '' : 'hidden'
+                                }`}
+                                onLoad={() => setStreamLoaded(true)}
+                                onError={() => {
+                                    setStreamLoaded(false);
+                                    // Auto-retry stream connection after 2 seconds
+                                    setTimeout(() => setStreamKey((k) => k + 1), 2000);
+                                }}
+                            />
+                            {/* Connecting overlay */}
+                            {!streamLoaded && (
+                                <div className="flex flex-col items-center gap-3 text-white">
+                                    <Loader2 className="h-8 w-8 animate-spin text-neutral-400" />
+                                    <p className="text-sm text-neutral-400">
+                                        Connecting to camera...
+                                    </p>
                                 </div>
                             )}
 
@@ -578,7 +720,7 @@ export default function CameraCapture({ brand, article, selectedSize }: Props) {
                             <Button
                                 size="lg"
                                 onClick={handleCapture}
-                                disabled={isCapturing || !isServerOnline}
+                                disabled={isCapturing || !streamLoaded}
                                 className="bg-[#6C88C4] px-8 text-white hover:bg-[#5a76b2]"
                             >
                                 {isCapturing ? (

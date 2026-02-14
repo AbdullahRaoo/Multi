@@ -23,6 +23,7 @@ import threading
 import base64
 import json
 from datetime import datetime
+import socket
 
 import cv2
 import numpy as np
@@ -32,6 +33,31 @@ _project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, _project_root)
 # Also ensure CWD is project root so SDK DLL resolution works
 os.chdir(_project_root)
+
+# PID file for process management (auto-start from Laravel)
+PID_FILE = os.path.join(_project_root, 'storage', 'app', 'camera_server.pid')
+
+
+def is_port_in_use(port):
+    """Check if a TCP port is already bound."""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        return s.connect_ex(('127.0.0.1', port)) == 0
+
+
+def write_pid():
+    """Write current PID to file for process management."""
+    os.makedirs(os.path.dirname(PID_FILE), exist_ok=True)
+    with open(PID_FILE, 'w') as f:
+        f.write(str(os.getpid()))
+
+
+def remove_pid():
+    """Remove PID file on shutdown."""
+    try:
+        os.remove(PID_FILE)
+    except OSError:
+        pass
+
 
 # Try to import Flask
 try:
@@ -231,7 +257,9 @@ class WebcamCamera:
 # ============================================================================
 
 app = Flask(__name__)
-CORS(app, origins="*")  # Allow all origins for local development
+CORS(app, origins="*", expose_headers=[
+    'X-Image-Width', 'X-Image-Height', 'X-Capture-Timestamp', 'X-Camera-Mode'
+])  # Allow all origins; expose custom headers for browser JS
 
 # Global state
 camera = None
@@ -240,6 +268,10 @@ latest_frame = None
 frame_lock = threading.Lock()
 streaming = False
 stream_thread = None
+streaming_paused = False          # Pause streaming for exclusive capture
+mode_changed_at = 0.0             # Timestamp of last mode change
+MODE_SETTLE_TIME = 0.5            # Seconds to wait after mode change (per reference code)
+capture_lock = threading.Lock()   # Prevent concurrent captures
 
 
 def init_camera():
@@ -267,6 +299,9 @@ def stream_worker():
     """Background thread that continuously grabs frames for streaming."""
     global latest_frame, streaming
     while streaming and camera and camera.is_open:
+        if streaming_paused:
+            time.sleep(0.01)  # Yield camera access during capture
+            continue
         frame = camera.grab()
         if frame is not None:
             with frame_lock:
@@ -328,10 +363,16 @@ def status():
     })
 
 
+@app.route('/api/ping', methods=['GET'])
+def ping():
+    """Ultra-lightweight health check — no camera interaction."""
+    return '', 200
+
+
 @app.route('/api/mode', methods=['POST'])
 def set_mode():
     """Set garment color mode (black or other)."""
-    global current_mode
+    global current_mode, mode_changed_at, latest_frame
     data = request.get_json(silent=True) or {}
     mode = data.get('mode', 'other')
 
@@ -339,8 +380,16 @@ def set_mode():
         return jsonify({'error': 'Invalid mode. Use "black" or "other".'}), 400
 
     current_mode = mode
+    mode_changed_at = time.time()
+
     if camera and camera.is_open:
         camera.set_mode(mode)
+
+    # Clear cached frame so streaming picks up fresh frames with new settings
+    with frame_lock:
+        latest_frame = None
+
+    print(f"[INFO] Mode changed to '{mode}' — camera needs ~{MODE_SETTLE_TIME}s to stabilize")
 
     return jsonify({
         'success': True,
@@ -365,23 +414,39 @@ def video_stream():
 
 @app.route('/api/capture', methods=['POST'])
 def capture():
-    """Capture a single high-quality frame and return as base64 JPEG."""
+    """Capture a single high-quality frame and return as base64 JPEG.
+    (Legacy endpoint — prefer /api/capture-jpeg for speed.)"""
+    global current_mode, mode_changed_at, streaming_paused
+
     if not camera or not camera.is_open:
         return jsonify({'error': 'Camera not available'}), 503
 
-    # Use latest streamed frame if available, otherwise do a direct grab
-    frame = None
-    if streaming:
-        with frame_lock:
-            frame = latest_frame
-    if frame is None:
-        # Direct grab — single attempt is sufficient
-        frame = camera.grab()
+    with capture_lock:
+        data = request.get_json(silent=True) or {}
+        req_mode = data.get('mode', current_mode)
+        if req_mode in ('black', 'other') and req_mode != current_mode:
+            current_mode = req_mode
+            camera.set_mode(current_mode)
+            mode_changed_at = time.time()
+
+        # Stabilize
+        elapsed = time.time() - mode_changed_at
+        if 0 < elapsed < MODE_SETTLE_TIME:
+            time.sleep(MODE_SETTLE_TIME - elapsed)
+
+        # Pause streaming and do fresh grab
+        streaming_paused = True
+        time.sleep(0.03)
+        try:
+            camera.grab()  # flush
+            camera.grab()  # flush
+            frame = camera.grab()
+        finally:
+            streaming_paused = False
 
     if frame is None:
         return jsonify({'error': 'Failed to capture frame'}), 500
 
-    # Encode as high-quality JPEG (grayscale is fine — same visual output)
     _, jpeg = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 95])
     b64 = base64.b64encode(jpeg.tobytes()).decode('utf-8')
 
@@ -397,6 +462,73 @@ def capture():
         'timestamp': timestamp,
         'camera_type': camera.camera_type,
     })
+
+
+@app.route('/api/capture-jpeg', methods=['GET'])
+def capture_jpeg():
+    """High-quality capture — returns raw JPEG binary with metadata in headers.
+
+    Uses the same pattern as the reference capture code:
+      1. Apply / confirm camera mode settings
+      2. Wait for sensor to stabilize (gain + auto-exposure)
+      3. Flush stale frames from the camera buffer
+      4. Grab a fresh frame
+    """
+    global current_mode, mode_changed_at, streaming_paused
+
+    if not camera or not camera.is_open:
+        return jsonify({'error': 'Camera not available'}), 503
+
+    with capture_lock:
+        # Accept optional mode parameter — frontend sends its expected mode
+        # so we can verify / re-apply if needed.
+        req_mode = request.args.get('mode', current_mode)
+        if req_mode in ('black', 'other') and req_mode != current_mode:
+            current_mode = req_mode
+            camera.set_mode(current_mode)
+            mode_changed_at = time.time()
+            print(f"[CAPTURE] Mode force-set to '{current_mode}' via capture param")
+
+        # Wait for mode to stabilize if recently changed (per reference code)
+        elapsed = time.time() - mode_changed_at
+        if 0 < elapsed < MODE_SETTLE_TIME:
+            wait = MODE_SETTLE_TIME - elapsed
+            print(f"[CAPTURE] Waiting {wait:.2f}s for mode to stabilize...")
+            time.sleep(wait)
+
+        # Pause streaming to get exclusive camera access
+        streaming_paused = True
+        time.sleep(0.03)  # Let current stream grab finish
+
+        try:
+            # Flush stale frames from camera buffer (2 discards)
+            camera.grab()
+            camera.grab()
+
+            # Capture the actual frame — fresh from sensor with correct settings
+            frame = camera.grab()
+        finally:
+            # Always resume streaming
+            streaming_paused = False
+
+    if frame is None:
+        return jsonify({'error': 'Failed to capture frame'}), 500
+
+    _, jpeg = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 95])
+    h, w = frame.shape[:2]
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+
+    return Response(
+        jpeg.tobytes(),
+        mimetype='image/jpeg',
+        headers={
+            'X-Image-Width': str(w),
+            'X-Image-Height': str(h),
+            'X-Capture-Timestamp': timestamp,
+            'X-Camera-Mode': current_mode,
+            'Cache-Control': 'no-cache',
+        }
+    )
 
 
 @app.route('/api/preview', methods=['GET'])
@@ -432,19 +564,43 @@ def cleanup():
 if __name__ == '__main__':
     import atexit
 
+    PORT = 5555
+
+    # When auto-started by PHP (no console), stdout/stderr may be invalid
+    # handles. Detect this and redirect to a log file to prevent crashes.
+    _log_path = os.path.join(_project_root, 'storage', 'logs', 'camera_server.log')
+    os.makedirs(os.path.dirname(_log_path), exist_ok=True)
+    try:
+        sys.stdout.flush()
+    except OSError:
+        _lf = open(_log_path, 'a', buffering=1)
+        sys.stdout = _lf
+        sys.stderr = _lf
+
+    # Prevent duplicate instances on the same port
+    if is_port_in_use(PORT):
+        print(f"[INFO] Port {PORT} already in use \u2014 another instance is running.")
+        sys.exit(0)
+
     print("=" * 60)
     print("  MagicQC Camera Server")
     print("=" * 60)
 
+    # Write PID file for process management
+    write_pid()
+    atexit.register(remove_pid)
+
     if init_camera():
         print(f"[OK] Camera ready: {camera.camera_type}")
+        # Auto-start streaming so frames are always warm for instant capture
+        start_streaming()
     else:
         print("[WARN] No camera found. Server will report 'no_camera'.")
 
     atexit.register(cleanup)
 
-    print(f"\n[SERVER] Starting on http://localhost:5555")
-    print(f"[SERVER] MJPEG stream: http://localhost:5555/api/stream")
+    print(f"\n[SERVER] Starting on http://localhost:{PORT}")
+    print(f"[SERVER] MJPEG stream: http://localhost:{PORT}/api/stream")
     print(f"[SERVER] Press Ctrl+C to stop\n")
 
-    app.run(host='0.0.0.0', port=5555, debug=False, threaded=True)
+    app.run(host='0.0.0.0', port=PORT, debug=False, threaded=True)
