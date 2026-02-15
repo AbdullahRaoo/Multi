@@ -4,8 +4,8 @@
 /public/build
 /public/hot
 /public/storage
-# /resources/js/actions  # Committed: needed for Docker builds (Wayfinder can't run without PHP)
-# /resources/js/routes    # Committed: needed for Docker builds (Wayfinder can't run without PHP)
+/resources/js/actions
+/resources/js/routes
 /resources/js/wayfinder
 /storage/*.key
 /storage/pail
