@@ -4,7 +4,7 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 COPY . .
-RUN npm run build
+RUN DOCKER_BUILD=1 npm run build
 
 # Stage 2: Install PHP dependencies
 FROM composer:2 AS vendor

@@ -21,10 +21,8 @@ services:
     container_name: magicqc_mysql
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-MagicQC_Root_2026}
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-magicqc@123}
       MYSQL_DATABASE: ${DB_DATABASE:-magicqc}
-      MYSQL_USER: ${DB_USERNAME:-magicqc_user}
-      MYSQL_PASSWORD: ${DB_PASSWORD:-MagicQC_DB_2026}
     volumes:
       - db_data:/var/lib/mysql
     ports:
