@@ -46,11 +46,10 @@ MagicQC is a quality control management system for garment manufacturing. It han
 - **MySQL**: Database (via XAMPP)
 - **Inertia.js**: Server-side adapter for Laravel
 
-### Camera / Python
+### Python
 
 - **Python 3.x**: Camera server runtime
 - **Flask**: HTTP server for camera API
-- **MindVision SDK**: Industrial camera driver (MV-SUA2000C)
 - **OpenCV**: Image processing and JPEG encoding
 - **NumPy**: Frame buffer handling
 
@@ -250,39 +249,6 @@ cp .env.example .env
 # Generate application key
 php artisan key:generate
 ```
-
-### Step 3: Configure Environment Variables
-
-Edit `.env` file with your configuration:
-
-```env
-APP_NAME="MagicQC"
-APP_ENV=local
-APP_DEBUG=true
-APP_URL=http://localhost:8000
-
-# Database (MySQL via XAMPP)
-DB_CONNECTION=mysql
-DB_HOST=127.0.0.1
-DB_PORT=3306
-DB_DATABASE=magic_qc
-DB_USERNAME=root
-DB_PASSWORD=
-```
-
-### Step 4: Database Setup
-
-```bash
-# Create MySQL database first (via XAMPP phpMyAdmin or CLI)
-# mysql -u root -e "CREATE DATABASE magic_qc;"
-
-# Run migrations
-php artisan migrate
-
-# (Optional) Seed database
-php artisan db:seed
-```
-
 ### Step 5: Python Camera Server Setup
 
 ```bash
