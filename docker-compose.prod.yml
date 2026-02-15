@@ -58,4 +58,4 @@ networks:
     driver: bridge
   wordpress_net:
     external: true
-    name: robionix_default
+    name: robionix_wordpress_network
