@@ -8,8 +8,8 @@ services:
     volumes:
       - app_storage:/var/www/html/storage
       - app_env:/var/www/html/.env-data
-    env_file:
-      - .env.production
+    # NO env_file here — the entrypoint script handles .env creation
+    # Using env_file would inject OS env vars that override Laravel's .env file
     depends_on:
       db:
         condition: service_healthy
@@ -22,8 +22,8 @@ services:
     container_name: magicqc_mysql
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-magicqc@123}
-      MYSQL_DATABASE: ${DB_DATABASE:-magicqc}
+      MYSQL_ROOT_PASSWORD: "magicqc@123"
+      MYSQL_DATABASE: magicqc
     volumes:
       - db_data:/var/lib/mysql
     ports:
