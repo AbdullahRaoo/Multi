@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 
 export default function Welcome() {
-    const { auth, basePath } = usePage<SharedData>().props as any;
+    const { auth } = usePage<SharedData>().props as any;
 
     return (
         <>
@@ -31,7 +31,7 @@ export default function Welcome() {
                         <nav className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
                                 <img
-                                    src={`${basePath || ''}/MagicQC logo.png`}
+                                    src="/MagicQC logo.png"
                                     alt="MagicQC"
                                     className="h-10 w-auto"
                                 />
@@ -216,7 +216,7 @@ export default function Welcome() {
                         <div className="flex flex-col md:flex-row items-center justify-between gap-6">
                             <div className="flex items-center gap-3">
                                 <img
-                                    src={`${basePath || ''}/MagicQC logo.png`}
+                                    src="/MagicQC logo.png"
                                     alt="MagicQC"
                                     className="h-8 w-auto brightness-0 invert"
                                 />
