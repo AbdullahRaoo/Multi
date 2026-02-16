@@ -17,7 +17,7 @@ export default function DeveloperLogin() {
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
-        post(`${basePath || ''}/developer-login`);
+        post('/developer-login');
     };
 
     return (
@@ -98,7 +98,7 @@ export default function DeveloperLogin() {
 
                             <div className="mt-6 text-center">
                                 <Link
-                                    href={`${basePath || ''}/`}
+                                    href="/"
                                     className="text-sm text-slate-500 hover:text-[#264c59] transition-colors"
                                 >
                                     ← Back to Home

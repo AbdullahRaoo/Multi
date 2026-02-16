@@ -85,7 +85,7 @@ export default function Welcome() {
                             {!auth.user && (
                                 <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                                     <Link
-                                        href={`${basePath || ''}/system-login`}
+                                        href="/system-login"
                                         className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#264c59] to-[#3d6b7a] px-8 py-4 text-base font-semibold text-white shadow-xl shadow-[#264c59]/25 transition-all hover:scale-105 hover:shadow-2xl hover:shadow-[#264c59]/30"
                                     >
                                         Login
@@ -227,7 +227,7 @@ export default function Welcome() {
                             </p>
 
                             <Link
-                                href={`${basePath || ''}/developer-login`}
+                                href="/developer-login"
                                 className="inline-flex items-center gap-2 text-sm text-slate-500 hover:text-[#f7a536] transition-colors"
                             >
                                 <Code2 className="h-4 w-4" />
