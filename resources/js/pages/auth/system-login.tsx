@@ -3,12 +3,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import InputError from '@/components/input-error';
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import { FormEventHandler } from 'react';
 import { Shield, Lock, Eye, EyeOff, User } from 'lucide-react';
 import { useState } from 'react';
 
 export default function SystemLogin() {
+    const { basePath } = usePage().props as any;
     const [showPassword, setShowPassword] = useState(false);
     const { data, setData, post, processing, errors } = useForm({
         username: '',
@@ -17,7 +18,7 @@ export default function SystemLogin() {
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
-        post('/system-login');
+        post(`${basePath || ''}/system-login`);
     };
 
     return (
@@ -110,7 +111,7 @@ export default function SystemLogin() {
                                 >
                                     {processing ? (
                                         <span className="flex items-center gap-2">
-                                            <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                                            <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
                                             Authenticating...
                                         </span>
                                     ) : (
@@ -124,7 +125,7 @@ export default function SystemLogin() {
 
                             <div className="mt-6 text-center">
                                 <Link
-                                    href="/"
+                                    href={`${basePath || ''}/`}
                                     className="text-sm text-slate-500 hover:text-[#264c59] transition-colors"
                                 >
                                     ← Back to Home

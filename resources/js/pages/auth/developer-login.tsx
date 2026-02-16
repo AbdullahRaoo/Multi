@@ -3,12 +3,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import InputError from '@/components/input-error';
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import { FormEventHandler } from 'react';
 import { Code2, Lock, Eye, EyeOff } from 'lucide-react';
 import { useState } from 'react';
 
 export default function DeveloperLogin() {
+    const { basePath } = usePage().props as any;
     const [showPassword, setShowPassword] = useState(false);
     const { data, setData, post, processing, errors } = useForm({
         password: '',
@@ -16,7 +17,7 @@ export default function DeveloperLogin() {
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
-        post('/developer-login');
+        post(`${basePath || ''}/developer-login`);
     };
 
     return (
@@ -97,7 +98,7 @@ export default function DeveloperLogin() {
 
                             <div className="mt-6 text-center">
                                 <Link
-                                    href="/"
+                                    href={`${basePath || ''}/`}
                                     className="text-sm text-slate-500 hover:text-[#264c59] transition-colors"
                                 >
                                     ← Back to Home
