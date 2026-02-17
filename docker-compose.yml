@@ -9,27 +9,27 @@ services:
         working_dir: /var/www
         volumes:
             - ./:/var/www
-            - /var/www/vendor # Preserve vendor from image
-            - /var/www/node_modules # Preserve node_modules from image
+            - /var/www/vendor
+            - /var/www/node_modules
         networks:
             - magicqc_network
+        depends_on:
+            - db
 
     nginx:
         image: nginx:alpine
         container_name: magicqc_nginx
         restart: unless-stopped
         ports:
-            # We don't expose 80/443 directly to host to avoid conflict
-            # Instead we expose a different port OR rely on the internal network
-            - "8081:80" 
+            - "8081:80"
         volumes:
             - ./:/var/www
-            - /var/www/vendor # Preserve vendor from image
-            - /var/www/node_modules # Preserve node_modules from image
+            - /var/www/vendor
+            - /var/www/node_modules
             - ./docker/nginx/conf.d:/etc/nginx/conf.d
         networks:
             - magicqc_network
-            - robionix_default 
+            - robionix_default
         depends_on:
             - app
 
@@ -48,7 +48,6 @@ services:
         networks:
             - magicqc_network
 
-    # Queue Worker
     worker:
         build:
             context: .
@@ -59,8 +58,8 @@ services:
         command: php artisan queue:work --tries=3 --timeout=90
         volumes:
             - ./:/var/www
-            - /var/www/vendor # Preserve vendor from image
-            - /var/www/node_modules # Preserve node_modules from image
+            - /var/www/vendor
+            - /var/www/node_modules
         networks:
             - magicqc_network
         depends_on:
@@ -71,7 +70,7 @@ networks:
     magicqc_network:
         driver: bridge
     robionix_default:
-        external: true # Join the existing network of robionix project
+        external: true
 
 volumes:
     dbdata:
