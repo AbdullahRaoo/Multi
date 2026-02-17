@@ -19,6 +19,9 @@ import {
     Layers,
     TrendingUp,
     Award,
+    Phone,
+    Mail,
+    MapPin,
 } from 'lucide-react';
 
 // Hook for scroll-triggered animations
@@ -555,32 +558,96 @@ export default function Welcome() {
                                 <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
                             </Link>
                         )}
+
+                        {/* Contact Cards */}
+                        <div className="mt-20 grid md:grid-cols-3 gap-4 max-w-3xl mx-auto">
+                            {[
+                                { icon: Phone, label: 'Call Us', value: '+92 333 7696789', href: 'tel:+923337696789' },
+                                { icon: Mail, label: 'Email', value: 'awaisfrombit@gmail.com', href: 'mailto:awaisfrombit@gmail.com' },
+                                { icon: MapPin, label: 'Location', value: 'NUTECH, I-12/2, Islamabad', href: null },
+                            ].map((item) => (
+                                <a
+                                    key={item.label}
+                                    href={item.href || '#'}
+                                    className="group rounded-2xl border border-white/[0.06] bg-white/[0.02] p-5 text-center transition-all duration-300 hover:-translate-y-1 hover:bg-white/[0.05] hover:border-[#f7a536]/20"
+                                >
+                                    <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-[#f7a536]/15 to-[#e8563f]/10 transition-transform duration-300 group-hover:scale-110">
+                                        <item.icon className="h-5 w-5 text-[#f7a536]" />
+                                    </div>
+                                    <div className="text-xs text-white/30 uppercase tracking-wider mb-1">{item.label}</div>
+                                    <div className="text-sm text-white/60 group-hover:text-white/80 transition-colors duration-300">{item.value}</div>
+                                </a>
+                            ))}
+                        </div>
                     </div>
                 </section>
 
                 {/* Footer */}
-                <footer className="py-12 border-t border-white/5">
+                <footer className="py-16 border-t border-white/5">
                     <div className="max-w-7xl mx-auto px-6">
-                        <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-                            <div className="flex items-center gap-3">
+                        <div className="grid md:grid-cols-3 gap-12 mb-12">
+                            {/* Company */}
+                            <div>
                                 <img
                                     src="/MagicQC logo.png"
                                     alt="MagicQC"
-                                    className="h-8 w-auto brightness-0 invert opacity-60"
+                                    className="h-9 w-auto brightness-0 invert opacity-70 mb-4"
                                 />
+                                <p className="text-sm text-white/30 leading-relaxed mb-4">Developed by Robionix Technologies (Pvt) Ltd.</p>
+                                <p className="text-xs text-white/20">A NUTECH-based industrial automation company led by foreign-qualified faculty and experienced industrial experts.</p>
                             </div>
 
-                            <p className="text-white/20 text-sm">
-                                © 2026 MagicQC. All rights reserved.
-                            </p>
+                            {/* Quick Links */}
+                            <div>
+                                <h4 className="text-sm font-semibold text-white/50 uppercase tracking-wider mb-4">Quick Links</h4>
+                                <div className="space-y-3">
+                                    {['Features', 'How It Works', 'Results', 'Contact'].map((item) => (
+                                        <a
+                                            key={item}
+                                            href={`#${item.toLowerCase().replace(/\s+/g, '-')}`}
+                                            className="block text-sm text-white/25 hover:text-[#f7a536] transition-colors duration-300"
+                                        >
+                                            {item}
+                                        </a>
+                                    ))}
+                                    <Link
+                                        href="/developer-login"
+                                        className="inline-flex items-center gap-2 text-sm text-white/25 hover:text-[#f7a536] transition-colors duration-300"
+                                    >
+                                        <Code2 className="h-3.5 w-3.5" />
+                                        Developer Access
+                                    </Link>
+                                </div>
+                            </div>
 
-                            <Link
-                                href="/developer-login"
-                                className="inline-flex items-center gap-2 text-sm text-white/20 hover:text-[#f7a536] transition-colors duration-300"
-                            >
-                                <Code2 className="h-4 w-4" />
-                                Developer Access
-                            </Link>
+                            {/* Contact */}
+                            <div>
+                                <h4 className="text-sm font-semibold text-white/50 uppercase tracking-wider mb-4">Contact</h4>
+                                <div className="space-y-3">
+                                    <a href="tel:+923337696789" className="flex items-center gap-3 text-sm text-white/25 hover:text-[#f7a536] transition-colors duration-300">
+                                        <Phone className="h-4 w-4 text-white/15" />
+                                        +92 333 7696789
+                                    </a>
+                                    <a href="mailto:awaisfrombit@gmail.com" className="flex items-center gap-3 text-sm text-white/25 hover:text-[#f7a536] transition-colors duration-300">
+                                        <Mail className="h-4 w-4 text-white/15" />
+                                        awaisfrombit@gmail.com
+                                    </a>
+                                    <div className="flex items-start gap-3 text-sm text-white/25">
+                                        <MapPin className="h-4 w-4 text-white/15 mt-0.5 shrink-0" />
+                                        National University of Technology (NUTECH), I-12/2, Islamabad
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Bottom bar */}
+                        <div className="pt-8 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-4">
+                            <p className="text-white/15 text-xs">
+                                © 2026 MagicQC by Robionix Technologies (Pvt) Ltd. All rights reserved.
+                            </p>
+                            <p className="text-white/10 text-xs">
+                                A University for Industry — NUTECH, Islamabad
+                            </p>
                         </div>
                     </div>
                 </footer>
