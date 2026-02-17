@@ -41,18 +41,9 @@ class HandleInertiaRequests extends Middleware
         return [
             ...parent::share($request),
             'name' => config('app.name'),
-            'basePath' => rtrim(parse_url(config('app.url'), PHP_URL_PATH) ?: '', '/'),
             'quote' => ['message' => trim($message), 'author' => trim($author)],
             'auth' => [
-                'user' => $request->user() ?: (session('auth_role') ? [
-                    'id' => 0,
-                    'name' => session('auth_username') ?? 'System User',
-                    'email' => session('auth_role') ?? 'system',
-                    'avatar' => null,
-                    'email_verified_at' => null,
-                    'created_at' => now()->toIso8601String(),
-                    'updated_at' => now()->toIso8601String(),
-                ] : null),
+                'user' => $request->user(),
             ],
             'isDeveloper' => session('is_developer', false),
             'authRole' => session('auth_role'),

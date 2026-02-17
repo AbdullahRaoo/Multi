@@ -3,9 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Models\Operator;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -102,22 +105,33 @@ class OperatorController extends Controller
             'login_pin.max' => 'Login PIN must not exceed 10 characters.',
         ]);
 
-        $updateData = [
-            'full_name' => $validated['full_name'],
-            'employee_id' => $validated['employee_id'],
-            'department' => $validated['department'] ?? null,
-            'contact_number' => $validated['contact_number'] ?? null,
-        ];
+        try {
+            $updateData = [
+                'full_name' => $validated['full_name'],
+                'employee_id' => $validated['employee_id'],
+                'department' => $validated['department'] ?? null,
+                'contact_number' => $validated['contact_number'] ?? null,
+            ];
 
-        // Only update login_pin if provided
-        if (!empty($validated['login_pin'])) {
-            $updateData['login_pin'] = Hash::make($validated['login_pin']);
+            // Only update login_pin if provided
+            if (!empty($validated['login_pin'])) {
+                $updateData['login_pin'] = Hash::make($validated['login_pin']);
+            }
+
+            $operator->update($updateData);
+
+            return redirect()->route('operators.index')
+                ->with('success', 'Operator updated successfully.');
+        } catch (\Exception $e) {
+            Log::error('Failed to update operator', [
+                'operator_id' => $operator->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Failed to update operator. Please try again.');
         }
-
-        $operator->update($updateData);
-
-        return redirect()->route('operators.index')
-            ->with('success', 'Operator updated successfully.');
     }
 
     /**
@@ -125,9 +139,44 @@ class OperatorController extends Controller
      */
     public function destroy(Operator $operator): RedirectResponse
     {
-        $operator->delete();
+        try {
+            DB::transaction(function () use ($operator) {
+                // Nullify operator references in tables with RESTRICT / SET NULL FK rules.
+                // measurement_results (Electron-created, FK was RESTRICT, now SET NULL)
+                // measurement_results_detailed (FK is SET NULL)
+                // Do this explicitly so deletion succeeds even before FK migration runs.
+                DB::table('measurement_results')
+                    ->where('operator_id', $operator->id)
+                    ->update(['operator_id' => null]);
 
-        return redirect()->route('operators.index')
-            ->with('success', 'Operator deleted successfully.');
+                DB::table('measurement_results_detailed')
+                    ->where('operator_id', $operator->id)
+                    ->update(['operator_id' => null]);
+
+                // inspection_records → ON DELETE CASCADE (handled by DB)
+                // measurement_sessions → ON DELETE CASCADE (handled by DB)
+
+                $operator->delete();
+            });
+
+            return redirect()->route('operators.index')
+                ->with('success', 'Operator deleted successfully.');
+        } catch (QueryException $e) {
+            Log::error('Failed to delete operator (FK constraint)', [
+                'operator_id' => $operator->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return redirect()->route('operators.index')
+                ->with('error', 'Cannot delete this operator because they have linked records. Please contact an administrator.');
+        } catch (\Exception $e) {
+            Log::error('Failed to delete operator', [
+                'operator_id' => $operator->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return redirect()->route('operators.index')
+                ->with('error', 'Failed to delete operator. Please try again.');
+        }
     }
 }

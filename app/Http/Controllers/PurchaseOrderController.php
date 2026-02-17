@@ -8,8 +8,11 @@ use App\Models\Brand;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderArticle;
 use App\Models\PurchaseOrderClientReference;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -164,6 +167,11 @@ class PurchaseOrderController extends Controller
 
     /**
      * Update the specified resource in storage.
+     *
+     * Articles are synced via upsert (match by article_type_id + article_style) to
+     * preserve existing purchase_order_articles.id values and avoid cascading
+     * deletes to measurement_results_detailed and measurement_sessions.
+     * Client references have no downstream FKs, so delete-and-recreate is safe.
      */
     public function update(Request $request, PurchaseOrder $purchaseOrder): RedirectResponse
     {
@@ -207,40 +215,65 @@ class PurchaseOrderController extends Controller
             'client_references.*.reference_email_address.email' => 'Reference email must be a valid email address.',
         ]);
 
-        $purchaseOrder->update([
-            'po_number' => $validated['po_number'],
-            'date' => $validated['date'],
-            'brand_id' => $validated['brand_id'],
-            'country' => $validated['country'],
-            'status' => $validated['status'],
-        ]);
+        try {
+            DB::transaction(function () use ($purchaseOrder, $validated) {
+                // Update PO header
+                $purchaseOrder->update([
+                    'po_number' => $validated['po_number'],
+                    'date' => $validated['date'],
+                    'brand_id' => $validated['brand_id'],
+                    'country' => $validated['country'],
+                    'status' => $validated['status'],
+                ]);
 
-        // Delete existing articles and create new ones
-        $purchaseOrder->articles()->delete();
-        foreach ($validated['articles'] as $articleData) {
-            $purchaseOrder->articles()->create([
-                'article_type_id' => $articleData['article_type_id'],
-                'article_style' => $articleData['article_style'],
-                'article_description' => $articleData['article_description'] ?? null,
-                'article_color' => $articleData['article_color'] ?? null,
-                'order_quantity' => $articleData['order_quantity'],
+                // --- Sync articles (upsert to preserve IDs with downstream FK refs) ---
+                $keptArticleIds = [];
+
+                foreach ($validated['articles'] as $articleData) {
+                    $article = $purchaseOrder->articles()->updateOrCreate(
+                        [
+                            'article_type_id' => $articleData['article_type_id'],
+                            'article_style'   => $articleData['article_style'],
+                        ],
+                        [
+                            'article_description' => $articleData['article_description'] ?? null,
+                            'article_color'       => $articleData['article_color'] ?? null,
+                            'order_quantity'      => $articleData['order_quantity'],
+                        ]
+                    );
+                    $keptArticleIds[] = $article->id;
+                }
+
+                // Only delete articles that are no longer in the submitted list.
+                // Articles with measurement_results_detailed or measurement_sessions
+                // children will cascade-delete those too, but only for genuinely removed articles.
+                $purchaseOrder->articles()->whereNotIn('id', $keptArticleIds)->delete();
+
+                // --- Sync client references (no downstream FKs, safe to delete-recreate) ---
+                $purchaseOrder->clientReferences()->delete();
+                foreach ($validated['client_references'] as $referenceData) {
+                    $purchaseOrder->clientReferences()->create([
+                        'reference_name'          => $referenceData['reference_name'],
+                        'reference_number'        => $referenceData['reference_number'] ?? null,
+                        'reference_email_address'  => $referenceData['reference_email_address'] ?? null,
+                        'email_subject'           => $referenceData['email_subject'] ?? null,
+                        'email_date'              => $referenceData['email_date'] ?? null,
+                    ]);
+                }
+            });
+
+            return redirect()->route('purchase-orders.index')
+                ->with('success', 'Purchase Order updated successfully.');
+        } catch (\Exception $e) {
+            Log::error('Failed to update purchase order', [
+                'purchase_order_id' => $purchaseOrder->id,
+                'error' => $e->getMessage(),
             ]);
-        }
 
-        // Delete existing client references and create new ones
-        $purchaseOrder->clientReferences()->delete();
-        foreach ($validated['client_references'] as $referenceData) {
-            $purchaseOrder->clientReferences()->create([
-                'reference_name' => $referenceData['reference_name'],
-                'reference_number' => $referenceData['reference_number'] ?? null,
-                'reference_email_address' => $referenceData['reference_email_address'] ?? null,
-                'email_subject' => $referenceData['email_subject'] ?? null,
-                'email_date' => $referenceData['email_date'] ?? null,
-            ]);
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Failed to update Purchase Order. Please try again.');
         }
-
-        return redirect()->route('purchase-orders.index')
-            ->with('success', 'Purchase Order updated successfully.');
     }
 
     /**
@@ -248,10 +281,47 @@ class PurchaseOrderController extends Controller
      */
     public function destroy(PurchaseOrder $purchaseOrder): RedirectResponse
     {
-        $purchaseOrder->delete();
+        try {
+            DB::transaction(function () use ($purchaseOrder) {
+                // Get all article IDs for this PO (needed to clean up Electron-created tables)
+                $articleIds = $purchaseOrder->articles()->pluck('id')->toArray();
 
-        return redirect()->route('purchase-orders.index')
-            ->with('success', 'Purchase Order deleted successfully.');
+                if (!empty($articleIds)) {
+                    // Explicitly delete measurement_results for these articles.
+                    // The FK was RESTRICT (now CASCADE via migration), but explicit
+                    // deletion ensures safety even if migration hasn't run.
+                    DB::table('measurement_results')
+                        ->whereIn('purchase_order_article_id', $articleIds)
+                        ->delete();
+                }
+
+                // Now safe to delete — remaining FKs are all CASCADE or SET NULL:
+                // purchase_order_articles → CASCADE (measurement_results_detailed CASCADE, measurement_sessions CASCADE)
+                // purchase_order_client_references → CASCADE
+                // inspection_records.purchase_order_id → SET NULL
+                // measurement_sessions.purchase_order_id → SET NULL
+                $purchaseOrder->delete();
+            });
+
+            return redirect()->route('purchase-orders.index')
+                ->with('success', 'Purchase Order deleted successfully.');
+        } catch (QueryException $e) {
+            Log::error('Failed to delete purchase order (FK constraint)', [
+                'purchase_order_id' => $purchaseOrder->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return redirect()->route('purchase-orders.index')
+                ->with('error', 'Cannot delete this Purchase Order because it has linked inspection or measurement records.');
+        } catch (\Exception $e) {
+            Log::error('Failed to delete purchase order', [
+                'purchase_order_id' => $purchaseOrder->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return redirect()->route('purchase-orders.index')
+                ->with('error', 'Failed to delete Purchase Order. Please try again.');
+        }
     }
 
     /**
