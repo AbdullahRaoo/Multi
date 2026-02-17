@@ -1,7 +1,7 @@
 # MagicQC — Complete API Integration Guide
 
 > **For:** Desktop / Electron App Developers  
-> **Version:** 1.0 — February 2026  
+> **Version:** 2.0 — February 2026  
 > **Server:** `https://magicqc.online`
 
 ---
@@ -512,6 +512,313 @@ Same as above but uses **query parameters** (avoids URL encoding issues with sla
 
 ---
 
+### 3.4 Operator Panel APIs (NEW)
+
+Endpoints for the Electron operator panel workflow: brands → articles → POs → measurements.
+All require `X-API-Key` header. Prefix: `/api/camera`
+
+---
+
+#### `GET /api/camera/brands`
+
+Get brands that have active purchase orders.
+
+**Response:**
+```json
+{
+  "success": true,
+  "brands": [
+    { "id": 1, "name": "Brand X" },
+    { "id": 2, "name": "Brand Y" }
+  ]
+}
+```
+
+---
+
+#### `GET /api/camera/article-types?brand_id=X`
+
+Get article types, optionally filtered by brand.
+
+**Response:**
+```json
+{
+  "success": true,
+  "article_types": [
+    { "id": 1, "name": "T-Shirt" },
+    { "id": 2, "name": "Polo" }
+  ]
+}
+```
+
+---
+
+#### `GET /api/camera/articles-filtered?brand_id=X&type_id=Y`
+
+Get articles filtered by brand and/or type.
+
+**Response:**
+```json
+{
+  "success": true,
+  "articles": [
+    {
+      "id": 1,
+      "article_style": "ABC123",
+      "brand_id": 1,
+      "brand_name": "Brand X",
+      "article_type_id": 2,
+      "article_type_name": "Polo",
+      "description": "Men's Polo Shirt"
+    }
+  ]
+}
+```
+
+---
+
+#### `GET /api/camera/purchase-orders?brand_id=X`
+
+Get active purchase orders, optionally filtered by brand.
+
+**Response:**
+```json
+{
+  "success": true,
+  "purchase_orders": [
+    {
+      "id": 1,
+      "po_number": "PO-2026-001",
+      "date": "2026-02-15",
+      "brand_id": 1,
+      "country": "Pakistan",
+      "status": "active"
+    }
+  ]
+}
+```
+
+---
+
+#### `GET /api/camera/po-articles?po_id=X`
+
+Get articles in a purchase order.
+
+**Query Params:** `po_id` (required)
+
+**Response:**
+```json
+{
+  "success": true,
+  "po_articles": [
+    {
+      "id": 1,
+      "purchase_order_id": 1,
+      "po_number": "PO-2026-001",
+      "article_type_id": 2,
+      "article_type_name": "Polo",
+      "article_style": "ABC123",
+      "article_description": "Men's Polo",
+      "article_color": "Navy",
+      "order_quantity": 500
+    }
+  ]
+}
+```
+
+---
+
+#### `GET /api/camera/measurement-specs?article_id=X&size=Y`
+
+Get measurement specs with 2-strategy lookup (size-specific values from `measurement_sizes` first).
+
+**Query Params:** `article_id` (required), `size` (optional)
+
+**Response:**
+```json
+{
+  "success": true,
+  "article_id": 1,
+  "size": "M",
+  "specs": [
+    {
+      "measurement_id": 10,
+      "code": "A",
+      "measurement": "Chest Width",
+      "expected_value": 52.5,
+      "tol_plus": 1.0,
+      "tol_minus": 1.0,
+      "side": "front"
+    }
+  ]
+}
+```
+
+---
+
+#### `GET /api/camera/available-sizes?article_id=X`
+
+Get distinct sizes available for an article.
+
+**Response:**
+```json
+{
+  "success": true,
+  "article_id": 1,
+  "sizes": ["S", "M", "L", "XL"]
+}
+```
+
+---
+
+#### `GET /api/camera/measurement-results?po_article_id=X&size=Y`
+
+Load existing measurement results.
+
+**Query Params:** `po_article_id` (required), `size` (optional)
+
+**Response:**
+```json
+{
+  "success": true,
+  "results": [
+    {
+      "id": 1,
+      "purchase_order_article_id": 1,
+      "measurement_id": 10,
+      "size": "M",
+      "measured_value": 52.8,
+      "expected_value": 52.5,
+      "status": "PASS",
+      "operator_id": 3
+    }
+  ]
+}
+```
+
+---
+
+#### `POST /api/camera/measurement-results`
+
+Save/upsert measurement results in bulk.
+
+**Body:**
+```json
+{
+  "results": [
+    {
+      "purchase_order_article_id": 1,
+      "measurement_id": 10,
+      "size": "M",
+      "article_style": "ABC123",
+      "measured_value": 52.8,
+      "expected_value": 52.5,
+      "tol_plus": 1.0,
+      "tol_minus": 1.0,
+      "status": "PASS",
+      "operator_id": 3
+    }
+  ]
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Measurement results saved successfully.",
+  "count": 1
+}
+```
+
+---
+
+#### `POST /api/camera/measurement-results-detailed`
+
+Save per-side measurement results (DELETE + INSERT for the given combination).
+
+**Body:**
+```json
+{
+  "purchase_order_article_id": 1,
+  "size": "M",
+  "side": "front",
+  "results": [
+    {
+      "measurement_id": 10,
+      "article_style": "ABC123",
+      "measured_value": 52.8,
+      "expected_value": 52.5,
+      "tol_plus": 1.0,
+      "tol_minus": 1.0,
+      "status": "PASS",
+      "operator_id": 3
+    }
+  ]
+}
+```
+
+---
+
+#### `POST /api/camera/measurement-sessions`
+
+Save/upsert a QC session record.
+
+**Body:**
+```json
+{
+  "purchase_order_article_id": 1,
+  "size": "M",
+  "article_style": "ABC123",
+  "article_id": 5,
+  "purchase_order_id": 1,
+  "operator_id": 3,
+  "status": "in_progress",
+  "front_side_complete": true,
+  "back_side_complete": false,
+  "front_qc_result": "PASS",
+  "back_qc_result": null
+}
+```
+
+---
+
+#### `POST /api/camera/verify-pin`
+
+Verify operator PIN for authentication.
+
+**Body:**
+```json
+{
+  "employee_id": "EMP001",
+  "pin": "1234"
+}
+```
+
+**Success Response:**
+```json
+{
+  "success": true,
+  "message": "PIN verified successfully.",
+  "operator": {
+    "id": 3,
+    "full_name": "John Doe",
+    "employee_id": "EMP001",
+    "department": "Quality Control"
+  }
+}
+```
+
+**Failure Response (401):**
+```json
+{
+  "success": false,
+  "message": "Invalid PIN."
+}
+```
+
+---
+
 ## 4. Complete TypeScript Integration Module
 
 Copy this into your Electron app as `api/magicqc.ts`:
@@ -851,6 +1158,18 @@ try {
 | `GET` | `/api/camera/articles/{id}/images` | ✅ Key | Get article images |
 | `POST` | `/api/camera/upload` | ✅ Key | Upload camera image |
 | `DELETE` | `/api/camera/images/{id}` | ✅ Key | Delete an image |
+| `GET` | `/api/camera/brands` | ✅ Key | Brands with active POs |
+| `GET` | `/api/camera/article-types` | ✅ Key | Article types (filter by brand) |
+| `GET` | `/api/camera/articles-filtered` | ✅ Key | Articles (filter by brand+type) |
+| `GET` | `/api/camera/purchase-orders` | ✅ Key | Active purchase orders |
+| `GET` | `/api/camera/po-articles` | ✅ Key | Articles in a PO |
+| `GET` | `/api/camera/measurement-specs` | ✅ Key | Measurement specs (2-strategy) |
+| `GET` | `/api/camera/available-sizes` | ✅ Key | Available sizes for article |
+| `GET` | `/api/camera/measurement-results` | ✅ Key | Load measurement results |
+| `POST` | `/api/camera/measurement-results` | ✅ Key | Save/upsert results (bulk) |
+| `POST` | `/api/camera/measurement-results-detailed` | ✅ Key | Save per-side results |
+| `POST` | `/api/camera/measurement-sessions` | ✅ Key | Save QC session |
+| `POST` | `/api/camera/verify-pin` | ✅ Key | Operator PIN verification |
 | `GET` | `/api/annotations` | ✅ Key | List camera annotations |
 | `GET` | `/api/annotations/{style}/{size}` | ✅ Key | Get annotation |
 | `POST` | `/api/annotations/sync` | ✅ Key | Sync annotation from script |

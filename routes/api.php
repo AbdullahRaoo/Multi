@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\CameraImageController;
+use App\Http\Controllers\Api\OperatorPanelController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -29,6 +30,42 @@ Route::prefix('camera')->group(function () {
     
     // Delete an image
     Route::delete('/images/{imageId}', [CameraImageController::class, 'deleteImage']);
+
+    // --- Operator Panel endpoints (OperatorPanelController) ---
+
+    // Brands with active POs
+    Route::get('/brands', [OperatorPanelController::class, 'getBrands']);
+
+    // Article types (filtered by brand_id)
+    Route::get('/article-types', [OperatorPanelController::class, 'getArticleTypes']);
+
+    // Articles with brand + type filtering
+    Route::get('/articles-filtered', [OperatorPanelController::class, 'getArticlesFiltered']);
+
+    // Purchase orders (filtered by brand_id)
+    Route::get('/purchase-orders', [OperatorPanelController::class, 'getPurchaseOrders']);
+
+    // Articles in a purchase order
+    Route::get('/po-articles', [OperatorPanelController::class, 'getPOArticles']);
+
+    // Measurement specs (2-strategy lookup)
+    Route::get('/measurement-specs', [OperatorPanelController::class, 'getMeasurementSpecs']);
+
+    // Available sizes for an article
+    Route::get('/available-sizes', [OperatorPanelController::class, 'getAvailableSizes']);
+
+    // Measurement results (GET = load, POST = save/upsert)
+    Route::get('/measurement-results', [OperatorPanelController::class, 'getMeasurementResults']);
+    Route::post('/measurement-results', [OperatorPanelController::class, 'saveMeasurementResults']);
+
+    // Detailed measurement results (per-side)
+    Route::post('/measurement-results-detailed', [OperatorPanelController::class, 'saveMeasurementResultsDetailed']);
+
+    // QC measurement sessions
+    Route::post('/measurement-sessions', [OperatorPanelController::class, 'saveMeasurementSession']);
+
+    // Operator PIN verification
+    Route::post('/verify-pin', [OperatorPanelController::class, 'verifyPin']);
 });
 
 // Annotation API routes (protected by API key in controller)
