@@ -49,6 +49,9 @@ RUN npm install && npm run build
 RUN cp -r /var/www/public/build /tmp/build-output
 RUN cp -r /var/www/vendor /tmp/vendor-output
 
+# Switch back to root for entrypoint (php-fpm handles user switching internally)
+USER root
+
 # Expose port 9000 and start php-fpm server
 EXPOSE 9000
 ENTRYPOINT ["entrypoint.sh"]
