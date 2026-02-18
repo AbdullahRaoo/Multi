@@ -153,6 +153,58 @@ type InspectionRecord {
     updated_at: DateTime
 }
 
+# --- Dynamically-created tables (no Eloquent model, custom resolvers) ---
+
+type MeasurementResult {
+    id: ID
+    purchase_order_article_id: Int
+    measurement_id: Int
+    size: String
+    article_style: String
+    measured_value: Float
+    expected_value: Float
+    tol_plus: Float
+    tol_minus: Float
+    status: String
+    operator_id: Int
+    created_at: DateTime
+    updated_at: DateTime
+}
+
+type MeasurementResultDetailed {
+    id: ID
+    purchase_order_article_id: Int
+    measurement_id: Int
+    size: String
+    side: String
+    article_style: String
+    measured_value: Float
+    expected_value: Float
+    tol_plus: Float
+    tol_minus: Float
+    status: String
+    operator_id: Int
+    created_at: DateTime
+    updated_at: DateTime
+}
+
+type MeasurementSession {
+    id: ID
+    purchase_order_article_id: Int
+    size: String
+    article_style: String
+    article_id: Int
+    purchase_order_id: Int
+    operator_id: Int
+    status: String
+    front_side_complete: Boolean
+    back_side_complete: Boolean
+    front_qc_result: String
+    back_qc_result: String
+    created_at: DateTime
+    updated_at: DateTime
+}
+
 # ===========================================================================
 # QUERIES — Read data from any model
 # ===========================================================================
@@ -230,6 +282,26 @@ type Query {
         purchase_order_id: Int @eq
         operator_id: Int @eq
     ): [InspectionRecord!]! @all @guard(with: ["api-key"])
+
+    "Get saved measurement results (from dynamically-created table)."
+    measurementResults(
+        purchase_order_article_id: Int
+        measurement_id: Int
+        size: String
+    ): [MeasurementResult!]! @guard(with: ["api-key"])
+
+    "Get saved detailed measurement results (per-side)."
+    measurementResultsDetailed(
+        purchase_order_article_id: Int
+        size: String
+        side: String
+    ): [MeasurementResultDetailed!]! @guard(with: ["api-key"])
+
+    "Get saved measurement sessions."
+    measurementSessions(
+        purchase_order_article_id: Int
+        size: String
+    ): [MeasurementSession!]! @guard(with: ["api-key"])
 }
 
 # ===========================================================================
