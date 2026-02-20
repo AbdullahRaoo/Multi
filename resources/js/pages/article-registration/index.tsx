@@ -140,7 +140,7 @@ export default function ArticleRegistrationIndex({ hasPassword, articleStyles }:
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if (!isAnnotating) return;
-            
+
             if (e.key === 'z' || e.key === 'Z') {
                 e.preventDefault();
                 setZoomLevel(prev => Math.min(prev + 0.25, 5));
@@ -225,7 +225,7 @@ export default function ArticleRegistrationIndex({ hasPassword, articleStyles }:
                     'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
                 },
-                body: JSON.stringify({ 
+                body: JSON.stringify({
                     password,
                     current_password: hasPassword ? currentPassword : null,
                 }),
@@ -332,7 +332,7 @@ export default function ArticleRegistrationIndex({ hasPassword, articleStyles }:
             if (data.success) {
                 setImages(data.images || []);
                 setShowAnnotation(true);
-                
+
                 // Load existing annotation if available
                 if (data.annotation) {
                     setExistingAnnotation(data.annotation);
@@ -524,7 +524,7 @@ export default function ArticleRegistrationIndex({ hasPassword, articleStyles }:
                             </div>
                             <CardTitle>Set Up One-Time Password</CardTitle>
                             <CardDescription>
-                                Create a secure password to protect Article Registration. 
+                                Create a secure password to protect Article Registration.
                                 This password will be saved permanently - you won't need to enter it again.
                             </CardDescription>
                         </CardHeader>
@@ -802,9 +802,9 @@ export default function ArticleRegistrationIndex({ hasPassword, articleStyles }:
                                 </span>
                             </div>
                         )}
-                        
-                        <Button 
-                            variant="outline" 
+
+                        <Button
+                            variant="outline"
                             onClick={() => {
                                 console.log('Calibrate button clicked');
                                 setShowCalibrationManager(true);
@@ -813,7 +813,7 @@ export default function ArticleRegistrationIndex({ hasPassword, articleStyles }:
                             <Ruler className="mr-2 h-4 w-4" />
                             {activeCalibration ? 'Manage' : 'Calibrate'}
                         </Button>
-                        
+
                         <Button variant="outline" onClick={() => setIsChangingPassword(true)}>
                             <Lock className="mr-2 h-4 w-4" />
                             Change Password
@@ -866,8 +866,8 @@ export default function ArticleRegistrationIndex({ hasPassword, articleStyles }:
                                     </div>
                                 ) : availableSizes.length === 0 ? (
                                     <div className="rounded-md bg-amber-50 dark:bg-amber-900/20 p-3 text-sm text-amber-600 dark:text-amber-400">
-                                        No images have been captured for this article style yet. 
-                                        Go to the article page and use "Take Image" to capture images first.
+                                        No images have been captured for this article style yet.
+                                        Go to the article page and use "Upload Image" to capture images first.
                                     </div>
                                 ) : (
                                     <Select value={selectedSize} onValueChange={handleSizeChange}>
@@ -889,7 +889,7 @@ export default function ArticleRegistrationIndex({ hasPassword, articleStyles }:
                         {/* Article Annotation Button - Only show when size is selected */}
                         {selectedSize && (
                             <div className="space-y-2">
-                                <Button 
+                                <Button
                                     onClick={handleViewAnnotation}
                                     disabled={isLoadingImages}
                                     className="w-full sm:w-auto"
@@ -926,8 +926,8 @@ export default function ArticleRegistrationIndex({ hasPassword, articleStyles }:
                                         Images for {selectedArticleStyle} - Size {selectedSize}
                                     </CardDescription>
                                 </div>
-                                <Button 
-                                    variant="ghost" 
+                                <Button
+                                    variant="ghost"
                                     size="icon"
                                     onClick={() => setShowAnnotation(false)}
                                 >
@@ -968,7 +968,7 @@ export default function ArticleRegistrationIndex({ hasPassword, articleStyles }:
                                                     if (!confirm('Are you sure you want to delete this annotation?')) {
                                                         return;
                                                     }
-                                                    
+
                                                     try {
                                                         const response = await fetch(`/article-registration/annotations/${existingAnnotation.id}`, {
                                                             method: 'DELETE',
@@ -976,9 +976,9 @@ export default function ArticleRegistrationIndex({ hasPassword, articleStyles }:
                                                                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
                                                             },
                                                         });
-                                                        
+
                                                         const data = await response.json();
-                                                        
+
                                                         if (response.ok && data.success) {
                                                             setExistingAnnotation(null);
                                                             setAnnotationPoints([]);
@@ -1042,7 +1042,7 @@ export default function ArticleRegistrationIndex({ hasPassword, articleStyles }:
                                                 {existingAnnotation.json_file_path && (
                                                     <p className="text-sm mt-2">
                                                         <strong>JSON File:</strong>{' '}
-                                                        <a 
+                                                        <a
                                                             href={`/storage/${existingAnnotation.json_file_path}`}
                                                             target="_blank"
                                                             rel="noopener noreferrer"
@@ -1071,7 +1071,7 @@ export default function ArticleRegistrationIndex({ hasPassword, articleStyles }:
                                     </div>
                                 </div>
                             )}
-                            
+
                             {images.length === 0 ? (
                                 <div className="flex flex-col items-center justify-center py-12 text-center">
                                     <Image className="h-16 w-16 text-neutral-300 dark:text-neutral-700 mb-4" />
@@ -1080,14 +1080,14 @@ export default function ArticleRegistrationIndex({ hasPassword, articleStyles }:
                                     </h3>
                                     <p className="text-sm text-neutral-500 dark:text-neutral-500 mt-2 max-w-md">
                                         No images have been captured for this article style and size combination.
-                                        Use the "Take Image" feature on the article page to capture images.
+                                        Use the "Upload Image" feature on the article page to capture images.
                                     </p>
                                 </div>
                             ) : (
                                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                                     {images.map((image) => (
-                                        <div 
-                                            key={image.id} 
+                                        <div
+                                            key={image.id}
                                             className="group relative rounded-lg border border-neutral-200 dark:border-neutral-800 overflow-hidden bg-neutral-50 dark:bg-neutral-900"
                                         >
                                             <div className="aspect-square">
@@ -1120,8 +1120,8 @@ export default function ArticleRegistrationIndex({ hasPassword, articleStyles }:
                                                 >
                                                     <ZoomIn className="h-4 w-4" />
                                                 </Button>
-                                                <a 
-                                                    href={`/storage/${image.image_path}`} 
+                                                <a
+                                                    href={`/storage/${image.image_path}`}
                                                     download={image.image_name}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
@@ -1149,11 +1149,11 @@ export default function ArticleRegistrationIndex({ hasPassword, articleStyles }:
 
                 {/* Image Preview Modal (Simple View) */}
                 {selectedImage && !isAnnotating && (
-                    <div 
+                    <div
                         className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
                         onClick={() => setSelectedImage(null)}
                     >
-                        <div 
+                        <div
                             className="relative max-h-[90vh] max-w-[90vw]"
                             onClick={(e) => e.stopPropagation()}
                         >
@@ -1204,8 +1204,8 @@ export default function ArticleRegistrationIndex({ hasPassword, articleStyles }:
                                     </Button>
                                 </div>
                             </div>
-                            
-                            <div 
+
+                            <div
                                 ref={imageContainerRef}
                                 className="flex-1 flex items-center justify-center relative overflow-hidden"
                                 onMouseDown={handleMouseDown}
@@ -1215,7 +1215,7 @@ export default function ArticleRegistrationIndex({ hasPassword, articleStyles }:
                                 onWheel={handleWheel}
                                 style={{ cursor: isPanning ? 'grabbing' : 'default' }}
                             >
-                                <div 
+                                <div
                                     className="relative inline-block"
                                     style={{
                                         transform: `translate(${panPosition.x}px, ${panPosition.y}px) scale(${zoomLevel})`,
@@ -1244,11 +1244,11 @@ export default function ArticleRegistrationIndex({ hasPassword, articleStyles }:
                                                 handleStartEditLabel(index);
                                             }}
                                         >
-                                            <div 
+                                            <div
                                                 className="w-3 h-3 bg-red-500 border border-white rounded-full shadow-lg hover:w-4 hover:h-4 transition-all"
                                                 style={{ transform: `scale(${1 / zoomLevel})` }}
                                             />
-                                            <div 
+                                            <div
                                                 className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/80 text-white px-1.5 py-0.5 rounded text-[10px] whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
                                                 style={{ transform: `scale(${1 / zoomLevel})`, transformOrigin: 'left center' }}
                                             >
@@ -1258,7 +1258,7 @@ export default function ArticleRegistrationIndex({ hasPassword, articleStyles }:
                                     ))}
                                 </div>
                             </div>
-                            
+
                             <div className="mt-4 text-center text-neutral-400 text-xs space-y-1">
                                 <p>Click on the image to add annotation points</p>
                                 <p className="text-neutral-500">
@@ -1273,7 +1273,7 @@ export default function ArticleRegistrationIndex({ hasPassword, articleStyles }:
                         {/* Right Panel - Annotation controls */}
                         <div className="w-80 bg-neutral-900 border-l border-neutral-800 p-4 flex flex-col">
                             <h3 className="text-white font-semibold mb-4">Annotation Details</h3>
-                            
+
                             {/* Annotation Name */}
                             <div className="mb-4">
                                 <Label htmlFor="annotationName" className="text-neutral-300 text-sm">
@@ -1388,7 +1388,7 @@ export default function ArticleRegistrationIndex({ hasPassword, articleStyles }:
                                                 </div>
                                             </div>
                                         )}
-                                        
+
                                         {activeCalibration ? (
                                             <>
                                                 <p className="text-green-400 text-xs mb-3">

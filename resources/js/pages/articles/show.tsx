@@ -27,7 +27,7 @@ import AppLayout from '@/layouts/app-layout';
 import brandRoutes from '@/routes/brands';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router } from '@inertiajs/react';
-import { Pencil, ArrowLeft, Package, Plus, Eye, Search, Trash2, Download, Camera, ChevronDown, X, ImageIcon, Maximize2, Minimize2, Loader2 } from 'lucide-react';
+import { Pencil, ArrowLeft, Package, Plus, Eye, Search, Trash2, Download, Upload, ChevronDown, X, ImageIcon, Loader2 } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 
 interface Brand {
@@ -114,13 +114,6 @@ export default function Show({ brand, article, annotations = [] }: Props) {
     const [imageToDelete, setImageToDelete] = useState<ArticleImage | null>(null);
     const [deleteImageDialogOpen, setDeleteImageDialogOpen] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
-    const videoRef = useRef<HTMLVideoElement>(null);
-    const canvasRef = useRef<HTMLCanvasElement>(null);
-    const [isCameraActive, setIsCameraActive] = useState(false);
-    const [stream, setStream] = useState<MediaStream | null>(null);
-    const [isFullscreen, setIsFullscreen] = useState(false);
-    const [isCameraLoading, setIsCameraLoading] = useState(false);
-    const [cameraError, setCameraError] = useState<string | null>(null);
     const [articleAnnotations, setArticleAnnotations] = useState<ArticleAnnotation[]>(annotations);
     const [selectedAnnotation, setSelectedAnnotation] = useState<ArticleAnnotation | null>(null);
     const [annotationPreviewOpen, setAnnotationPreviewOpen] = useState(false);
@@ -132,146 +125,17 @@ export default function Show({ brand, article, annotations = [] }: Props) {
         setArticleAnnotations(annotations);
     }, [annotations]);
 
-    // Clean up camera when dialog closes
-    useEffect(() => {
-        return () => {
-            if (stream) {
-                stream.getTracks().forEach(track => track.stop());
-            }
-        };
-    }, [stream]);
-
     const handleSizeSelect = (size: string) => {
         setSelectedSize(size);
     };
 
-    const handleTakeImage = () => {
+    const handleUploadImage = () => {
         if (!selectedSize) {
             alert('Please select a size first');
             return;
         }
-        // Navigate to the dedicated camera capture page
-        router.visit(`/brands/${brand.id}/articles/${article.id}/camera-capture?size=${selectedSize}`);
-    };
-
-    const startCamera = async () => {
-        setIsCameraLoading(true);
-        setCameraError(null);
-
-        try {
-            // Check if browser supports getUserMedia
-            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                throw new Error('NotSupported');
-            }
-
-            // Check if running in secure context (HTTPS or localhost)
-            if (!window.isSecureContext) {
-                throw new Error('InsecureContext');
-            }
-
-            // Request camera access - try different constraints
-            let mediaStream: MediaStream;
-
-            try {
-                // First try with high resolution
-                mediaStream = await navigator.mediaDevices.getUserMedia({
-                    video: {
-                        facingMode: 'environment',
-                        width: { ideal: 1920 },
-                        height: { ideal: 1080 },
-                    }
-                });
-            } catch (e) {
-                // Fallback to basic camera access
-                console.log('High-res camera failed, trying basic:', e);
-                mediaStream = await navigator.mediaDevices.getUserMedia({
-                    video: true
-                });
-            }
-
-            setStream(mediaStream);
-            setIsCameraActive(true);
-
-            // Use setTimeout to ensure video element is rendered
-            setTimeout(() => {
-                if (videoRef.current) {
-                    videoRef.current.srcObject = mediaStream;
-                    videoRef.current.onloadedmetadata = () => {
-                        videoRef.current?.play().catch(err => {
-                            console.error('Error playing video:', err);
-                        });
-                        setIsCameraLoading(false);
-                    };
-                    // Fallback if onloadedmetadata doesn't fire
-                    setTimeout(() => {
-                        if (isCameraLoading) {
-                            setIsCameraLoading(false);
-                        }
-                    }, 2000);
-                } else {
-                    console.error('Video element not found');
-                    setIsCameraLoading(false);
-                }
-            }, 100);
-
-        } catch (err: any) {
-            console.error('Error accessing camera:', err);
-
-            // Provide specific error messages based on error type
-            let errorMessage = 'Could not access camera. ';
-
-            if (err.message === 'NotSupported') {
-                errorMessage = 'Your browser does not support camera access. Please use Chrome, Firefox, or Edge.';
-            } else if (err.message === 'InsecureContext') {
-                errorMessage = 'Camera access requires HTTPS. Please access this site via https:// or localhost.';
-            } else if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-                errorMessage = 'Camera permission denied. Please allow camera access in your browser settings and try again.';
-            } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
-                errorMessage = 'No camera found. Please connect a camera and try again.';
-            } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
-                errorMessage = 'Camera is in use by another application. Please close other apps using the camera and try again.';
-            } else if (err.name === 'OverconstrainedError') {
-                errorMessage = 'Camera does not support the requested settings. Please try again.';
-            } else if (err.name === 'AbortError') {
-                errorMessage = 'Camera access was interrupted. Please try again.';
-            } else {
-                errorMessage += 'Please check permissions and try again.';
-            }
-
-            setCameraError(errorMessage);
-            setIsCameraLoading(false);
-        }
-    };
-
-    const stopCamera = () => {
-        if (stream) {
-            stream.getTracks().forEach(track => track.stop());
-            setStream(null);
-        }
-        if (videoRef.current) {
-            videoRef.current.srcObject = null;
-        }
-        setIsCameraActive(false);
-        setIsFullscreen(false);
-    };
-
-    const captureImage = () => {
-        if (videoRef.current && canvasRef.current) {
-            const context = canvasRef.current.getContext('2d');
-            if (context) {
-                // Capture at full video resolution
-                canvasRef.current.width = videoRef.current.videoWidth;
-                canvasRef.current.height = videoRef.current.videoHeight;
-                context.drawImage(videoRef.current, 0, 0);
-                const imageData = canvasRef.current.toDataURL('image/jpeg', 0.95);
-                setCapturedImage(imageData);
-                stopCamera();
-            }
-        }
-    };
-
-    const toggleFullscreen = () => {
-        setIsFullscreen(!isFullscreen);
+        // Open native file picker
+        fileInputRef.current?.click();
     };
 
     const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -280,9 +144,12 @@ export default function Show({ brand, article, annotations = [] }: Props) {
             const reader = new FileReader();
             reader.onloadend = () => {
                 setCapturedImage(reader.result as string);
+                setImageDialogOpen(true);
             };
             reader.readAsDataURL(file);
         }
+        // Reset input so same file can be re-selected
+        if (event.target) event.target.value = '';
     };
 
     const dataURLtoBlob = (dataURL: string): Blob => {
@@ -335,11 +202,13 @@ export default function Show({ brand, article, annotations = [] }: Props) {
     };
 
     const handleCloseImageDialog = () => {
-        stopCamera();
         setCapturedImage(null);
         setImageDialogOpen(false);
-        setIsFullscreen(false);
-        setCameraError(null);
+    };
+
+    const handleReUpload = () => {
+        setCapturedImage(null);
+        fileInputRef.current?.click();
     };
 
     const handleDeleteImageClick = (image: ArticleImage) => {
@@ -489,7 +358,16 @@ export default function Show({ brand, article, annotations = [] }: Props) {
                             </div> */}
                         </div>
 
-                        {/* Size and Take Image Buttons */}
+                        {/* Hidden file input */}
+                        <input
+                            type="file"
+                            ref={fileInputRef}
+                            accept="image/jpeg,image/png,image/jpg"
+                            onChange={handleFileUpload}
+                            className="hidden"
+                        />
+
+                        {/* Size and Upload Image Buttons */}
                         <div className="mt-6 pt-6 border-t border-neutral-200 dark:border-neutral-700">
                             <div className="flex items-center gap-4">
                                 <DropdownMenu>
@@ -513,12 +391,12 @@ export default function Show({ brand, article, annotations = [] }: Props) {
                                 </DropdownMenu>
 
                                 <Button
-                                    onClick={handleTakeImage}
+                                    onClick={handleUploadImage}
                                     disabled={!selectedSize}
                                     className={!selectedSize ? 'opacity-50 cursor-not-allowed' : ''}
                                 >
-                                    <Camera className="mr-2 h-4 w-4" />
-                                    Take Image
+                                    <Upload className="mr-2 h-4 w-4" />
+                                    Upload Image
                                 </Button>
 
                                 {selectedSize && (
@@ -804,158 +682,55 @@ export default function Show({ brand, article, annotations = [] }: Props) {
                     description={`Are you sure you want to delete this image for size "${imageToDelete?.size}"? This action cannot be undone.`}
                 />
 
-                {/* Image Capture Dialog */}
+                {/* Image Preview & Upload Dialog */}
                 <Dialog open={imageDialogOpen} onOpenChange={handleCloseImageDialog}>
-                    <DialogContent className={isFullscreen ? "max-w-[100vw] w-screen h-screen max-h-screen p-0 rounded-none" : "max-w-3xl"}>
-                        {!isFullscreen && (
-                            <DialogHeader>
-                                <DialogTitle>Capture Image</DialogTitle>
-                                <DialogDescription>
-                                    Article: {article.article_style} | Size: {selectedSize}
-                                </DialogDescription>
-                            </DialogHeader>
-                        )}
+                    <DialogContent className="max-w-3xl">
+                        <DialogHeader>
+                            <DialogTitle>Upload Image</DialogTitle>
+                            <DialogDescription>
+                                Article: {article.article_style} | Size: {selectedSize}
+                            </DialogDescription>
+                        </DialogHeader>
 
-                        <div className={isFullscreen ? "w-full h-full flex flex-col" : "space-y-4"}>
-                            {/* Hidden file input */}
-                            <input
-                                type="file"
-                                ref={fileInputRef}
-                                accept="image/*"
-                                onChange={handleFileUpload}
-                                className="hidden"
-                            />
-
-                            {/* Hidden canvas for capturing */}
-                            <canvas ref={canvasRef} className="hidden" />
-
-                            {/* Video element - always mounted but hidden when not active */}
-                            <video
-                                ref={videoRef}
-                                autoPlay
-                                playsInline
-                                muted
-                                className={!isCameraActive || capturedImage ? 'hidden' : (isFullscreen
-                                    ? "flex-1 w-full h-full object-contain bg-black"
-                                    : "w-full rounded-lg border border-neutral-200 dark:border-neutral-700 min-h-[300px]"
-                                )}
-                                style={isFullscreen && isCameraActive && !capturedImage ? { minHeight: 'calc(100vh - 180px)' } : {}}
-                            />
-
-                            {!capturedImage ? (
-                                <>
-                                    {isCameraLoading ? (
-                                        <div className={`flex flex-col items-center justify-center gap-4 ${isFullscreen ? 'flex-1 bg-black' : 'py-12 border-2 border-dashed border-neutral-300 dark:border-neutral-700 rounded-lg'}`}>
-                                            <Loader2 className="h-12 w-12 text-blue-500 animate-spin" />
-                                            <p className={isFullscreen ? "text-white" : "text-neutral-600 dark:text-neutral-400"}>
-                                                Starting camera...
-                                            </p>
-                                        </div>
-                                    ) : isCameraActive ? (
-                                        <div className={`relative ${isFullscreen ? 'flex-1 flex flex-col bg-black' : ''}`}>
-                                            {/* Fullscreen header bar */}
-                                            {isFullscreen && (
-                                                <div className="absolute top-0 left-0 right-0 z-10 bg-black/70 text-white p-4 flex justify-between items-center">
-                                                    <div>
-                                                        <h3 className="font-semibold">Capture Image</h3>
-                                                        <p className="text-sm text-gray-300">
-                                                            Article: {article.article_style} | Size: {selectedSize}
-                                                        </p>
-                                                    </div>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        onClick={toggleFullscreen}
-                                                        className="text-white hover:bg-white/20"
-                                                    >
-                                                        <Minimize2 className="h-5 w-5" />
-                                                    </Button>
-                                                </div>
-                                            )}
-
-                                            {/* Camera controls */}
-                                            <div className={`flex justify-center gap-4 ${isFullscreen ? 'absolute bottom-0 left-0 right-0 bg-black/70 p-6' : 'mt-4'}`}>
-                                                {!isFullscreen && (
-                                                    <Button variant="outline" onClick={toggleFullscreen}>
-                                                        <Maximize2 className="mr-2 h-4 w-4" />
-                                                        Fullscreen
-                                                    </Button>
-                                                )}
-                                                <Button onClick={captureImage} size={isFullscreen ? "lg" : "default"} className={isFullscreen ? "px-8" : ""}>
-                                                    <Camera className="mr-2 h-5 w-5" />
-                                                    Capture
-                                                </Button>
-                                                <Button variant={isFullscreen ? "secondary" : "outline"} onClick={stopCamera} size={isFullscreen ? "lg" : "default"}>
-                                                    Cancel
-                                                </Button>
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        <div className="flex flex-col items-center justify-center gap-4 py-12 border-2 border-dashed border-neutral-300 dark:border-neutral-700 rounded-lg">
-                                            {cameraError ? (
-                                                <>
-                                                    <X className="h-12 w-12 text-red-500" />
-                                                    <p className="text-red-600 dark:text-red-400 text-center px-4">
-                                                        {cameraError}
-                                                    </p>
-                                                    <Button onClick={startCamera}>
-                                                        <Camera className="mr-2 h-4 w-4" />
-                                                        Try Again
-                                                    </Button>
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <Camera className="h-12 w-12 text-neutral-400" />
-                                                    <p className="text-neutral-600 dark:text-neutral-400">
-                                                        Choose how to capture the image
-                                                    </p>
-                                                    <div className="flex gap-4">
-                                                        <Button onClick={startCamera}>
-                                                            <Camera className="mr-2 h-4 w-4" />
-                                                            Use Camera
-                                                        </Button>
-                                                        <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
-                                                            <ImageIcon className="mr-2 h-4 w-4" />
-                                                            Upload File
-                                                        </Button>
-                                                    </div>
-                                                </>
-                                            )}
-                                        </div>
-                                    )}
-                                </>
-                            ) : (
+                        <div className="space-y-4">
+                            {capturedImage ? (
                                 <div className="relative">
                                     <img
                                         src={capturedImage}
-                                        alt="Captured"
-                                        className="w-full rounded-lg border border-neutral-200 dark:border-neutral-700"
+                                        alt="Preview"
+                                        className="w-full rounded-lg border border-neutral-200 dark:border-neutral-700 max-h-[60vh] object-contain bg-neutral-50 dark:bg-neutral-900"
                                     />
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        className="absolute top-2 right-2"
-                                        onClick={() => setCapturedImage(null)}
-                                    >
-                                        <X className="h-4 w-4" />
-                                    </Button>
+                                </div>
+                            ) : (
+                                <div className="flex flex-col items-center justify-center gap-4 py-12 border-2 border-dashed border-neutral-300 dark:border-neutral-700 rounded-lg">
+                                    <ImageIcon className="h-12 w-12 text-neutral-400" />
+                                    <p className="text-neutral-600 dark:text-neutral-400">
+                                        No image selected
+                                    </p>
                                 </div>
                             )}
                         </div>
 
-                        {!isFullscreen && (
-                            <DialogFooter>
-                                <Button variant="outline" onClick={handleCloseImageDialog}>
-                                    Cancel
-                                </Button>
-                                <Button
-                                    onClick={handleSaveImage}
-                                    disabled={!capturedImage || isUploading}
-                                >
-                                    {isUploading ? 'Saving...' : 'Save Image'}
-                                </Button>
-                            </DialogFooter>
-                        )}
+                        <DialogFooter className="flex gap-2 sm:gap-0">
+                            <Button variant="outline" onClick={handleCloseImageDialog}>
+                                Cancel
+                            </Button>
+                            <Button variant="outline" onClick={handleReUpload}>
+                                <Upload className="mr-2 h-4 w-4" />
+                                Re-upload
+                            </Button>
+                            <Button
+                                onClick={handleSaveImage}
+                                disabled={!capturedImage || isUploading}
+                            >
+                                {isUploading ? (
+                                    <>
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        Saving...
+                                    </>
+                                ) : 'Save'}
+                            </Button>
+                        </DialogFooter>
                     </DialogContent>
                 </Dialog>
 
