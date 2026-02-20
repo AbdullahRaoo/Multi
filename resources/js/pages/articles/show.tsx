@@ -113,6 +113,7 @@ export default function Show({ brand, article, annotations = [] }: Props) {
     const [isUploading, setIsUploading] = useState(false);
     const [imageToDelete, setImageToDelete] = useState<ArticleImage | null>(null);
     const [deleteImageDialogOpen, setDeleteImageDialogOpen] = useState(false);
+    const [imageResolution, setImageResolution] = useState<{ width: number; height: number } | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [articleAnnotations, setArticleAnnotations] = useState<ArticleAnnotation[]>(annotations);
     const [selectedAnnotation, setSelectedAnnotation] = useState<ArticleAnnotation | null>(null);
@@ -143,8 +144,16 @@ export default function Show({ brand, article, annotations = [] }: Props) {
         if (file) {
             const reader = new FileReader();
             reader.onloadend = () => {
-                setCapturedImage(reader.result as string);
-                setImageDialogOpen(true);
+                const dataUrl = reader.result as string;
+                setCapturedImage(dataUrl);
+
+                // Read image resolution
+                const img = new Image();
+                img.onload = () => {
+                    setImageResolution({ width: img.width, height: img.height });
+                    setImageDialogOpen(true);
+                };
+                img.src = dataUrl;
             };
             reader.readAsDataURL(file);
         }
@@ -203,11 +212,13 @@ export default function Show({ brand, article, annotations = [] }: Props) {
 
     const handleCloseImageDialog = () => {
         setCapturedImage(null);
+        setImageResolution(null);
         setImageDialogOpen(false);
     };
 
     const handleReUpload = () => {
         setCapturedImage(null);
+        setImageResolution(null);
         fileInputRef.current?.click();
     };
 
@@ -689,6 +700,7 @@ export default function Show({ brand, article, annotations = [] }: Props) {
                             <DialogTitle>Upload Image</DialogTitle>
                             <DialogDescription>
                                 Article: {article.article_style} | Size: {selectedSize}
+                                {imageResolution && ` | Resolution: ${imageResolution.width} × ${imageResolution.height}`}
                             </DialogDescription>
                         </DialogHeader>
 
