@@ -8,12 +8,12 @@ mkdir -p /var/www/vendor
 # Copy built assets from image backup to the bind-mounted volume
 if [ -d "/tmp/build-output" ]; then
     echo "Copying Vite build assets to public/build..."
-    cp -rf /tmp/build-output/* /var/www/public/build/
+    cp -rfn /tmp/build-output/* /var/www/public/build/
 fi
 
 if [ -d "/tmp/vendor-output" ]; then
     echo "Copying vendor dependencies..."
-    cp -rf /tmp/vendor-output/* /var/www/vendor/
+    cp -rfn /tmp/vendor-output/* /var/www/vendor/
 fi
 
 echo "Entrypoint complete, starting: $@"
