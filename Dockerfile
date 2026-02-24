@@ -38,8 +38,8 @@ RUN chmod +x /usr/local/bin/entrypoint.sh
 # Change current user to www
 USER www-data
 
-# Install PHP dependencies
-RUN composer install --no-interaction --optimize-autoloader --no-dev
+# Install PHP dependencies (force IPv4 to avoid Docker DNS/IPv6 timeout issues)
+RUN COMPOSER_IPRESOLVE=4 composer install --no-interaction --optimize-autoloader --no-dev
 
 # Install JS dependencies and build
 RUN npm install && npm run build
