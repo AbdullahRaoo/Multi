@@ -38,9 +38,7 @@ services:
             - dbdata:/var/lib/mysql
 
     worker:
-        build:
-            context: .
-            dockerfile: Dockerfile
+        image: magicqc-app
         container_name: magicqc_worker
         restart: unless-stopped
         working_dir: /var/www
